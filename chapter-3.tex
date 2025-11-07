@@ -219,14 +219,14 @@ Die wichtigsten Anforderungen an die entwickelte Messkette sind in Tabelle~\ref{
 \end{table}
 
 \subsection{Datenerfassung}
-Die Datenerfassung umfasst Aufnahme und Übertragung der OS1-Punktwolken. Der grundlegende Aufbau orientiert sich an \cite{wendel2025}. Die Daten werden über eine Ethernet-Verbindung an den Embedded-PC (dSPACE MAB~III) übertragen; zur Anbindung kommt ein USB-A-auf-Ethernet-Adapter des Typs \emph{Renkforce RF-4708614} mit einer Übertragungsrate bis \(1\,\text{Gbit/s}\) zum Einsatz (vgl. \cite{conrad2025}). Die Kommunikation zwischen Sensor und Embedded-System erfolgt über ROS~2.
+Die Datenerfassung umfasst Aufnahme und Übertragung der OS1-Punktwolken. Der grundlegende Aufbau orientiert sich an \parencite{OusterOS1}. Die Daten werden über eine Ethernet-Verbindung an den Embedded-PC (dSPACE MAB~III) übertragen; zur Anbindung kommt ein USB-A-auf-Ethernet-Adapter des Typs \emph{Renkforce RF-4708614} mit einer Übertragungsrate bis \(1\,\text{Gbit/s}\) zum Einsatz (vgl. \cite{conrad2025}). Die Kommunikation zwischen Sensor und Embedded-System erfolgt über ROS~2.
 
 Der Ouster~OS1 publiziert seine Messdaten als \texttt{sensor\_msgs/PointCloud2} auf \texttt{/ouster/points}. Die Punktwolken enthalten pro Punkt Kartesierkoordinaten \((x,y,z)\), die Intensität des reflektierten Signals sowie den Ring-Index des jeweiligen Lasers; der Zeitstempel wird direkt aus der LiDAR-Firmware übernommen. Die Punktwolken werden über das lokale ROS~2-Netz an den Laptop übertragen, auf dem sie wahlweise in \emph{RViz2} visualisiert oder über die GUI verarbeitet werden können.
 
 \begin{figure}[h!]
   \centering
   \includegraphics[width=0.85\textwidth]{Bilder/messkette_sensordaten.png}
-  \caption{Aufbau der Datenerfassung mit dem Ouster~OS1-LiDAR (überarbeitet nach \cite{wendel2025}).}
+  \caption{Aufbau der Datenerfassung mit dem Ouster~OS1-LiDAR (überarbeitet nach \parencite{OusterOS1}).}
   \label{fig:messkette_sensordaten}
 \end{figure}
 

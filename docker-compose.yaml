@@ -28,7 +28,7 @@ services:
         mkdir -p build &&
         latexmk -pdf -interaction=nonstopmode -file-line-error \
           -outdir=build -auxdir=build \
-          .docker\ba.tex
+          .docker/ba.tex
 
   clean:
     image: texlive/texlive:latest-full

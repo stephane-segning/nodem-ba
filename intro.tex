@@ -1,0 +1,36 @@
+\chapter{Einleitung}
+
+\section{Hinführung}
+Autonome und hochautomatisierte Fahrzeuge sowie mobile Robotersysteme sind auf eine präzise, robuste und nachvollziehbare Umfelderkennung angewiesen, um Sicherheit zu gewährleisten und betriebliche Leistungsfähigkeit zu erreichen. Unter den verfügbaren Sensortechnologien liefert LiDAR dichte, dreidimensionale Punktwolken mit hoher Winkelauflösung und weitgehend konstanter Leistungsfähigkeit über verschiedene Beleuchtungsbedingungen hinweg. Im Kontext des automatisierten Fahrens hat sich LiDAR als zentraler Baustein der Wahrnehmung etabliert und bildet die Grundlage zahlreicher Detektions-, Segmentierungs- und Trackingverfahren \parencite{Arnold2019Survey}.
+
+Aktuelle 360\textdegree{}-LiDAR-Sensoren wie der Ouster~OS1 vereinen hohe Winkelauflösung mit großer Reichweite und erzeugen Punktwolkenströme im Millionenbereich pro Sekunde. Dies eröffnet differenzierte Möglichkeiten zur Modellierung der Umgebung, stellt jedoch zugleich hohe Anforderungen an die effiziente Vorverarbeitung, die robuste Bodensegmentierung, die objektspezifische Gruppierung sowie die zuverlässige Verfolgung in (nahezu) Echtzeit. Für eine systematische, reproduzierbare Integration bietet ROS~2 eine modulare Middleware mit klaren Kommunikationssemantiken und praxiserprobten Werkzeugketten \parencite{Macenski2022ROS2,ROS2Docs}. Die in dieser Arbeit betrachtete Sensorplattform basiert auf einem Ouster~OS1 und entspricht einem typischen Automotive‑Setup \parencite{OusterOS1}.
+
+\section{Themenspezifizierung}
+Ziel dieser Arbeit ist die Entwicklung und Evaluierung einer modularen, echtzeitnahen Pipeline zur LiDAR‑basierten Umfelderkennung auf Basis hochauflösender 360\textdegree{}‑Daten. Im Fokus stehen (i) die qualitätssteigernde Vorverarbeitung (u.\,a. Ausreißerreduktion, Downsampling), (ii) eine robuste Bodensegmentierung für unterschiedliche Szenarien, (iii) die extraktionssichere Bildung von Clustern und zugehörigen Bounding‑Boxen sowie (iv) die objektspezifische Verfolgung. Die Implementierung erfolgt in ROS~2 mit dem Ziel, klare Schnittstellen, reproduzierbare Experimente und eine messbare Laufzeitgüte zu erzielen. Die Beurteilung erfolgt anhand etablierter Metriken (z.\,B. IoU für Boden/Nicht‑Boden, Precision/Recall für Detektion, Latenz/FPS für Laufzeit) und orientiert sich an in der Literatur und in Benchmarks üblichen Bewertungskonzepten \parencite{Arnold2019Survey,KITTI2012}.
+
+\section{Abgrenzung}
+Nicht Bestandteil der Arbeit sind Sensorfusion mit Kamera/Radar, semantische Segmentierung mittels großskaliger neuronaler Netze inklusive umfangreicher Trainingsläufe, sowie kartengestützte Lokalisierung und globale Trajektorienplanung. Ebenfalls außerhalb des Fokus liegen Hardware‑Design und optoelektronische Auslegung des Sensors, eine sicherheitstechnische Zertifizierung sowie herstellerübergreifende Performancevergleiche jenseits der eingesetzten Ouster‑OS1‑Konfiguration. Kalibrierung wird auf die für die Verarbeitung erforderliche Extrinsik/Zeitsynchronisation begrenzt; eine detaillierte Analyse der Langzeitdrift ist nicht Gegenstand.
+
+\section{Forschungsfragen}
+Zur Zielerreichung werden u.\,a. folgende Fragen untersucht:
+\begin{enumerate}[label=\textbf{F\arabic*})]
+  \item Welche Vorverarbeitungsstrategien verbessern die Datenqualität (z.\,B. Rausch‑/Ausreißerreduktion, Downsampling) bei vertretbarer Laufzeit und stabiler End‑zu‑Ende‑Latenz?
+  \item Welche Verfahren zur Bodensegmentierung (z.\,B. RANSAC‑Ebene, progressive morphologische Filter, Cloth‑Simulation) erreichen die beste Balance aus Genauigkeit (z.\,B. IoU) und Robustheit über Szenarien hinweg \parencite{FischlerBolles1981,Zhang2003PMF,Zhang2016CSF}? 
+  \item Wie wirken sich Vorverarbeitung und Bodensegmentierung auf die nachgelagerte Objektbildung (Clustering/Bounding‑Boxes) und Detektion aus (z.\,B. Precision/Recall)?
+  \item Wie lässt sich die Pipeline in ROS~2 so integrieren, dass deterministische Verarbeitung und geforderte Durchsatzraten (FPS) erreicht werden, ohne die Erkennungsleistung signifikant zu kompromittieren?
+\end{enumerate}
+
+\section{Beitrag der Arbeit}
+Die Arbeit leistet folgende Beiträge:
+\begin{itemize}
+  \item Entwurf und Implementierung einer modularen ROS~2‑Pipeline für Vorverarbeitung, Bodensegmentierung, Cluster‑ und Box‑Bildung sowie Tracking auf Basis eines Ouster~OS1‑Sensors.
+  \item Systematische Gegenüberstellung ausgewählter Boden‑ und Clusterverfahren unter konsistenten Metriken (Genauigkeit/Robustheit vs. Laufzeit), inklusive Analyse relevanter Parameterwirkungen.
+  \item Bereitstellung reproduzierbarer Experimente mit klar dokumentierten Konfigurationen, Datenschnitten und Auswertungsskripten.
+\end{itemize}
+
+\section{Methodische Vorgehensweise}
+Die Bearbeitung folgt einem experimentell‑analytischen Vorgehen: (i) Literaturrecherche und Anforderungsanalyse, (ii) Datenerhebung/‑auswahl mit Ouster~OS1, (iii) Implementierung der Pipelinebausteine, (iv) Integration in ROS~2 mit definierten QoS‑Profilen und Ausführungsmodellen, (v) experimentelle Evaluierung anhand festgelegter Metriken und Lastfälle, (vi) Diskussion der Trade‑offs zwischen Genauigkeit, Robustheit und Laufzeit.
+
+\section{Aufbau der Arbeit}
+Kapitel~\ref{chap:stand-der-technik} stellt wissenschaftlich‑technische Grundlagen, Messprinzipien und sensorische Eigenschaften dar und verortet die gewählten Verfahren im Stand der Technik. Kapitel~\ref{chap:systemarchitektur} beschreibt die Systemarchitektur, Datenflüsse und Implementierungsentscheidungen in ROS~2. Darauf aufbauend folgen die Kapitel zur Vorverarbeitung, zur Cluster‑/Bounding‑Box‑Bildung und zur Objektverfolgung mit jeweils fokussierten Evaluationsabschnitten. Ein abschließendes Kapitel fasst die Ergebnisse zusammen und gibt einen Ausblick auf weiterführende Arbeiten.
+
