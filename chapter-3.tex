@@ -1,0 +1,353 @@
+\chapter{Systemarchitektur}
+\label{chap:systemarchitektur}
+
+Dieses Kapitel beschreibt die technische Systemarchitektur der Umfelderkennung auf Basis von ROS~2 und eines Ouster~OS1. Ziel ist eine nachvollziehbare, konsistente und echtzeitfähige Verarbeitungskette. Die Darstellung umfasst (i) Grundlagen von ROS~2, (ii) Datenrepräsentation und Bibliotheken, (iii) Arbeitsumgebung, (iv) Gesamtsystem mit Datenaufnahme und Pipeline, (v) Deployment sowie (vi) Bewertungsmetriken.
+
+In diesem Zusammenhang werden die Software- und Hardwarekomponenten beschrieben, die für die Erfassung, Verarbeitung und Auswertung der Sensordaten verwendet wurden. Zunächst werden die Grundlagen des Robot Operating System~2~(ROS~2) erläutert, das als Middleware zur Kommunikation zwischen den einzelnen Modulen dient. Anschließend wird die unter Linux~Ubuntu~22.04 eingerichtete Arbeitsumgebung vorgestellt, in der die Implementierung und Tests durchgeführt wurden. Abschließend erfolgt ein Überblick über das Gesamtsystem mit den definierten Anforderungen, der Datenerfassung und der praktischen Umsetzung der entwickelten Messkette.
+
+\section{Grundlagen von ROS~2}
+\label{sec:ros2_basics}
+Das \emph{Robot Operating System~2 (ROS~2)} ist ein quelloffenes Framework für modulare, verteilte Robotiksysteme. Es stellt Middleware-basierte Kommunikation (DDS), wiederverwendbare Komponenten und Entwicklungswerkzeuge bereit. Dank Skalierbarkeit und Plattformunabhängigkeit wird ROS~2 in Forschung und Industrie eingesetzt (z.\,B. autonome Fahrzeuge, mobile Robotik, Inspektion).
+
+\subsection{Nodes}
+\label{sec:ros2_nodes}
+Nodes sind die grundlegenden Prozesse eines ROS~2-Systems (z.\,B. Sensordatenerfassung, Verarbeitung, Aktorik). Die Modularisierung erlaubt klar definierte Schnittstellen und Wiederverwendung (vgl. \cite{ros2_docs}).
+
+\subsection{Topics}
+\label{sec:ros2_topics}
+Themenkanäle (Topics) transportieren Nachrichten nach dem Publish/Subscribe-Prinzip. Publisher und Subscriber sind entkoppelt, was flexible, verteilte Architekturen ermöglicht (vgl. \cite{ros2_docs}).
+
+\subsection{Nachrichten}
+\label{sec:ros2_messages}
+Nachrichten sind wohldefinierte Datenstrukturen (z.\,B. Ganzzahlen, Fließkomma, Arrays, benutzerdefinierte Typen) und erlauben einen sprach- und implementationsübergreifenden Austausch (vgl. \cite{ros2_docs}).
+
+\subsection{Bags}
+\label{sec:ros2_bags}
+\emph{ROS~2 Bags} zeichnen Topic-Nachrichten auf und spielen sie wieder ab. Sie unterstützen Analyse, Debugging und reproduzierbare Experimente (vgl. \cite{ros2_docs}).
+
+\subsection{RViz2}
+\label{sec:ros2_rviz2}
+\emph{RViz2} visualisiert Punktwolken, Trajektorien und Systemzustände in 3D und unterstützt Entwicklung und Fehlersuche (vgl. \cite{ros2_docs}).
+
+\subsection{DDS, Discovery und Transports}
+ROS~2 nutzt DDS als Middleware. In \emph{Humble} sind \emph{CycloneDDS} und \emph{FastDDS} verbreitet (RMW: \texttt{rmw\_cyclonedds}, \texttt{rmw\_fastrtps}).
+\begin{itemize}
+  \item \textbf{Discovery}: Teilnehmer-/Endpunkt-Discovery (SPDP/SEDP) über Multicast/Unicast; Domänen-ID segmentiert Netze.
+  \item \textbf{Transports}: UDP als Standard; Shared-Memory (SHM) und \emph{intra-process} reduzieren Kopierkosten bei Co-Lokation.
+  \item \textbf{Konfiguration}: DDS-XML/Umgebungsvariablen zur Steuerung von Interfaces, Whitelists, Timern und Puffergrößen.
+\end{itemize}
+Empfehlung: SHM/\emph{intra-process} aktivieren, Netzwerkschnittstelle gezielt wählen (Sensor-LAN), Domänen trennen.
+
+\subsection{Executors, Callback-Gruppen und Intra-Process}
+Die Abarbeitung erfolgt über Executor-Konzepte:
+\begin{itemize}
+  \item \textbf{SingleThreadedExecutor}: deterministische Reihenfolge, für lineare Pipelines geeignet.
+  \item \textbf{MultiThreadedExecutor}: parallele Verarbeitung über \emph{CallbackGroups} (reentrant/exclusive) für rechenintensive Schritte.
+  \item \textbf{Intra-Process-Comms}: \texttt{NodeOptions\{use\_intra\_process\_comms=true\}} reduziert Kopien großer Nachrichten (Punktwolken).
+\end{itemize}
+CPU-Affinitäten/Prioritäten und abgestimmte Puffer (QoS-Depth) minimieren Latenzjitter.
+
+\subsection{Quality of Service (QoS)}
+\label{sec:ros2_qos}
+QoS-Profile in ROS~2 definieren Kommunikationssemantik (Zuverlässigkeit, Pufferung, Haltbarkeit, zeitliche Garantien) und beeinflussen Latenz, Verlustverhalten und Speicherbedarf. Für hochratige Sensorströme sind konsistente Profile entlang der Pipeline wesentlich.
+
+\paragraph{Policies und Parameter}
+\begin{itemize}
+  \item \textbf{Reliability} (Reliable/BestEffort): \emph{Reliable} minimiert Paketverluste (unter Last potentiell höhere Latenz); \emph{BestEffort} priorisiert geringe Latenz und toleriert Verluste.
+  \item \textbf{History/Depth}: \emph{KeepLast} mit begrenzter Tiefe limitiert Puffer und Latenz; \emph{KeepAll} ist für Sensorstreams ungeeignet.
+  \item \textbf{Durability}: \emph{Volatile} für Sensordaten; \emph{TransientLocal} für statische Konfigurationen (z.\,B. Kalibrierung).
+  \item \textbf{Deadline/Liveliness}: Überwachung von Aktualisierungsraten bzw. Lebenszeichen.
+  \item \textbf{Lifespan}: Verfallszeit für Nachrichten (selten bei LiDAR erforderlich).
+\end{itemize}
+
+\paragraph{Empfohlene Profile}
+\begin{itemize}
+  \item Verarbeitungspipeline: \emph{Reliable} + \emph{KeepLast}(5--10), \emph{Volatile} (verlustarm bei kontrollierter Pufferung).
+  \item Visualisierung (RViz2): \emph{BestEffort} + \emph{KeepLast}(1--5), \emph{Volatile} (niedrige Latenz, verlusttolerant).
+\end{itemize}
+
+\paragraph{Zuordnung zu Topics}
+\begin{itemize}
+  \item \texttt{/ouster/points}: Reliable, KeepLast(10), Volatile.
+  \item \texttt{/points\_cropped}, \texttt{/points\_voxel}: Reliable, KeepLast(10), Volatile.
+  \item \texttt{/obstacle\_points}: Reliable, KeepLast(10), Volatile.
+  \item \texttt{/detections\_raw}, \texttt{/tracks\_raw}: Reliable, KeepLast(5), Volatile.
+\end{itemize}
+
+\paragraph{Übersicht und Beispiele}
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{l l l l}
+    \hline
+    \textbf{Topic} & \textbf{Reliability} & \textbf{History/Depth} & \textbf{Durability} \\
+    \hline
+    /ouster/points & Reliable & KeepLast/10 & Volatile \\
+    /points\_cropped & Reliable & KeepLast/10 & Volatile \\
+    /points\_voxel & Reliable & KeepLast/10 & Volatile \\
+    /obstacle\_points & Reliable & KeepLast/10 & Volatile \\
+    /detections\_raw & Reliable & KeepLast/5 & Volatile \\
+    /tracks\_raw & Reliable & KeepLast/5 & Volatile \\
+    \hline
+  \end{tabular}
+  \caption{Empfohlene QoS-Profile für zentrale Topics.}
+  \label{tab:qos-topics}
+\end{table}
+
+QoS-Override bei Wiedergabe (verkürzte YAML-Struktur):
+\begin{verbatim}
+topics:
+  - topic: /ouster/points
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 10
+  - topic: /tracks_raw
+    qos:
+      reliability: reliable
+      durability: volatile
+      history: keep_last
+      depth: 5
+\end{verbatim}
+
+\paragraph{QoS-Aushandlung und Fehlermodi}
+Publisher/Subscriber handeln effektive QoS aus. Sonderfälle: (i) \emph{Reliable}~Publisher und \emph{BestEffort}~Subscriber: Verbindung möglich, Abonnent erhält \emph{BestEffort}; Publisher-Puffer können wachsen. (ii) Mismatch bei \emph{Durability}: Keine Nachlieferung historischer Daten für \emph{Volatile}. (iii) Zu geringe \emph{Depth}: Drops oder ansteigende E2E-Latenz (Backpressure). Empfehlung: QoS pro Topic explizit festlegen und monitoren.
+
+Beispiel C++-QoS-Konfiguration:
+\begin{verbatim}
+// Verarbeitung: verlustarm, begrenzte Puffer
+rclcpp::QoS qos_proc(rclcpp::KeepLast(10));
+qos_proc.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+qos_proc.durability(RMW_QOS_POLICY_DURABILITY_VOLATILE);
+auto pub = node->create_publisher<sensor_msgs::msg::PointCloud2>(
+  "/points_voxel", qos_proc);
+
+// Visualisierung: BestEffort
+rclcpp::QoS qos_viz(rclcpp::KeepLast(3));
+qos_viz.best_effort();
+auto sub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
+  "/obstacle_points", qos_viz,
+  [](sensor_msgs::msg::PointCloud2::SharedPtr){ /* ... */ });
+\end{verbatim}
+
+\section{Datenrepräsentation und Bibliotheken}
+\subsection{\texttt{sensor\_msgs/PointCloud2}: Felder und Konventionen}
+Ouster~OS1-Daten werden als \texttt{sensor\_msgs/PointCloud2} publiziert. Wichtige Felder und Semantik:
+\begin{itemize}
+  \item \texttt{x, y, z}: kartesische Koordinaten [m] im \texttt{frame\_id} (Sensor- oder Fahrzeugrahmen; konsistent mit \textit{tf2}).
+  \item \texttt{intensity}: reflektierte Signalstärke (treiberspezifische Skalierung); vergleichbar innerhalb eines Scans.
+  \item \texttt{ring}: vertikaler Kanalindex; erlaubt kanalspezifische Filter/Strukturierung (organisierte Wolken nach Ringen).
+  \item \texttt{time} (falls vorhanden): Punktzeitversatz relativ zu \texttt{header.stamp} (intra-scan motion compensation).
+  \item Hinweis: konkrete Feldtypen (z.\,B. \texttt{float32}, \texttt{uint16}) sind treiber-/konfigurationsabhängig.
+\end{itemize}
+Kodierung: in der Regel little-endian (\texttt{is\_bigendian = false}). Speicherlayout: linearer Puffer \texttt{data} mit \texttt{point\_step}/\texttt{row\_step}; \texttt{width}/\texttt{height} definieren die 2D-Anordnung (rotierender LiDAR: \texttt{height} = Ringanzahl, \texttt{width} = Punkte/Umdrehung). \texttt{is\_dense} signalisiert \enquote{NaN}-Vorkommen. Organisierte Wolken (Ring~\(\times\) Azimut) erleichtern nachbarschaftsbasierte Filter/Segmentierung.
+
+\subsection*{Feldmetadaten und Offsets}
+Die Einträge in \texttt{fields[]} beschreiben Name, Offset, Typ und Zählung. Beispiel (verkürzt, treiberspezifisch):
+\begin{verbatim}
+fields:
+  - {name: x,         offset: 0,  datatype: FLOAT32}
+  - {name: y,         offset: 4,  datatype: FLOAT32}
+  - {name: z,         offset: 8,  datatype: FLOAT32}
+  - {name: intensity, offset: 12, datatype: UINT16}
+  - {name: ring,      offset: 14, datatype: UINT16}
+point_step: 16
+\end{verbatim}
+
+\subsection*{Zugriff über Iteratoren}
+Robuster Feldzugriff mit Iterator-API vermeidet Zeigerarithmetik:
+\begin{verbatim}
+#include <sensor_msgs/point_cloud2_iterator.hpp>
+for (sensor_msgs::PointCloud2ConstIterator<float> it_x(msg, "x"), it_y(msg, "y"), it_z(msg, "z");
+     it_x != it_x.end(); ++it_x, ++it_y, ++it_z) {
+  const float x = *it_x, y = *it_y, z = *it_z;
+}
+\end{verbatim}
+
+\subsection{Point Cloud Library (PCL)}
+\label{chap:pcl}
+Die \emph{Point Cloud Library (PCL)} bildet die Grundlage der Umfelderkennung. Sie stellt effiziente Verfahren zur Filterung, Segmentierung, Clusterbildung und geometrischen Modellierung bereit (vgl. \cite{pcl_docs_2025}). In ROS~2 erfolgt die Einbindung über \texttt{pcl\_conversions} und ggf. \texttt{pcl\_ros}; \texttt{sensor\_msgs/PointCloud2} wird bidirektional in \texttt{pcl::PointCloud<T>} konvertiert.
+
+\subsection*{Genutzte Module und Algorithmen}
+\begin{itemize}
+  \item \textbf{Filter}: \texttt{VoxelGrid}, \texttt{PassThrough}/\texttt{CropBox}, \texttt{StatisticalOutlierRemoval}.
+  \item \textbf{Segmentierung}: Planarsegmentierung (RANSAC) für Boden.
+  \item \textbf{Clustering}: \texttt{EuclideanClusterExtraction}.
+  \item \textbf{Konvertierung}: \texttt{pcl::fromROSMsg}/\texttt{pcl::toROSMsg}, \texttt{pcl\_conversions}.
+\end{itemize}
+\textbf{Performance}: Vorallokation, Kopiervermeidung, geeignete Punkttypen (z.\,B. \texttt{pcl::PointXYZI}).
+
+\section{Arbeitsumgebung: Ubuntu 22.04}
+Für Entwicklung und Ausführung wird \textbf{Ubuntu~22.04~LTS (Jammy Jellyfish)} verwendet. Als Referenzplattform für ROS~2 ermöglicht Ubuntu eine nahtlose Integration von Bibliotheken, Treibern und Werkzeugen (vgl. \cite{ubuntu_docs_2025}). Die Distribution bietet stabile C++/Python-Toolchains, hohe Sicherheit und breite Unterstützung in wissenschaftlicher wie industrieller Softwareentwicklung. Die enge Verzahnung mit der in dieser Arbeit eingesetzten ROS-Distribution \emph{Humble~Hawksbill} vereinfacht die Einrichtung der Abhängigkeiten. Die aktive Entwicklergemeinschaft sorgt durch regelmäßige Updates, umfassende Dokumentation und eine große Auswahl an Open-Source-Paketen für einen reibungslosen Entwicklungsprozess. Dank der modularen Struktur von Linux lässt sich die Arbeitsumgebung flexibel an die spezifischen Anforderungen der Sensorintegration und der ROS-Module anpassen.
+
+\subsection*{Terminator-Terminalemulator}
+Der Terminalemulator \emph{Terminator} ermöglicht die parallele Ausführung und Überwachung mehrerer ROS~2-Knoten in aufgeteilten Terminalflächen. Dadurch können unterschiedliche Prozesse simultan beobachtet und kontrolliert werden (z.\,B. Sensorknoten, Filtermodule, Visualisierung). Wiederkehrende Layouts lassen sich speichern, wodurch eine standardisierte Entwicklungsumgebung entsteht, die den Überblick über komplexe Systemprozesse erleichtert und den Arbeitsfluss optimiert.
+
+\subsection*{Bash-Skripte}
+Bash-Skripte automatisieren wiederkehrende Aufgaben (Workspace laden, Launch starten, Aufzeichnung) und sind ein zentrales Werkzeug in Linux-basierten Entwicklungsumgebungen. In dieser Arbeit fungiert ein Skript als Bindeglied zwischen der GUI und dem Python-\texttt{launch}-File der Pipeline: Beim Start werden die ROS~2-Umgebung geladen, die relevanten Workspaces gesourced und das zentrale Launch-File ausgeführt, das alle erforderlichen Knoten in definierter Reihenfolge aktiviert.
+
+\subsection*{ROS~2 CLI und Monitoring}
+Zur Inspektion der Laufzeitumgebung werden \texttt{ros2}-Werkzeuge genutzt: \texttt{topic list/info/hz/bw/delay}, \texttt{node list/info}, \texttt{interface show}, \texttt{doctor}. Sie unterstützen Durchsatz-/Latenzschätzung, Interface-Inspektion und Grunddiagnostik.
+
+\section{Überblick über das Gesamtsystem}
+\subsection{Anforderungen an den Algorithmus}
+Die vom Ouster~OS1 erfassten Sensordaten bilden die Grundlage für eine Messkette, die relevante Objekte des Umfelds erkennt und strukturiert ausgibt. Ziel ist eine Objektliste mit Position, Orientierung und Abmessungen.
+
+Für eine zuverlässige Objekterkennung ist eine geeignete Aufbereitung der Rohdaten erforderlich. Bodenpunkte und Störsignale sind zu entfernen; die Punktdichte ist zu reduzieren, ohne die Geometrie relevanter Objekte wesentlich zu verfälschen. Die Parameter der Schritte müssen anpassbar bleiben, um unterschiedliche Szenarien abbilden zu können.
+
+Die Verarbeitung erfolgt unter Echtzeitbedingungen: Alle Prozesse sind innerhalb einer festen Zeitspanne abzuschließen, damit Ergebnisse kontinuierlich bereitgestellt werden (Ziel-Gesamtlatenz \(<100\,\text{ms}\) bei \(10\,\text{Hz}\)). Ein ressourcenschonender Betrieb auf Standardhardware ist sicherzustellen. Ergebnisse werden maschinenlesbar und zur schnellen Kontrolle im Terminal ausgegeben; zudem ist die Integration in die bestehende GUI vorgesehen.
+
+Die wichtigsten Anforderungen an die entwickelte Messkette sind in Tabelle~\ref{tab:anforderungen_messkette} zusammengefasst.
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{|c|p{12cm}|}
+    \hline
+    \textbf{Nr.} & \textbf{Anforderung} \\ \hline
+    1 & Eingabe: Sensordaten des Ouster~OS1-LiDAR \\ \hline
+    2 & Ausgabe: Objektliste mit Position, Orientierung und Abmessungen \\ \hline
+    3 & Entfernung von Bodenpunkten und Störsignalen \\ \hline
+    4 & Reduzierung der Punktwolkendichte zur Rechenoptimierung \\ \hline
+    5 & Anpassbare Parameter für unterschiedliche Umgebungen \\ \hline
+    6 & Echtzeitverarbeitung: Latenz \textless{}100\,ms bei 10\,Hz Sensorrate \\ \hline
+    7 & Ressourcenschonender Betrieb auf Standardhardware \\ \hline
+    8 & Maschinenlesbare und terminalbasierte Ergebnisausgabe \\ \hline
+    9 & Integration in die bestehende grafische Benutzeroberfläche (GUI) \\ \hline
+  \end{tabular}
+  \caption{Anforderungen an die Messkette zur Umfelderkennung}
+  \label{tab:anforderungen_messkette}
+\end{table}
+
+\subsection{Datenerfassung}
+Die Datenerfassung umfasst Aufnahme und Übertragung der OS1-Punktwolken. Der grundlegende Aufbau orientiert sich an \cite{wendel2025}. Die Daten werden über eine Ethernet-Verbindung an den Embedded-PC (dSPACE MAB~III) übertragen; zur Anbindung kommt ein USB-A-auf-Ethernet-Adapter des Typs \emph{Renkforce RF-4708614} mit einer Übertragungsrate bis \(1\,\text{Gbit/s}\) zum Einsatz (vgl. \cite{conrad2025}). Die Kommunikation zwischen Sensor und Embedded-System erfolgt über ROS~2.
+
+Der Ouster~OS1 publiziert seine Messdaten als \texttt{sensor\_msgs/PointCloud2} auf \texttt{/ouster/points}. Die Punktwolken enthalten pro Punkt Kartesierkoordinaten \((x,y,z)\), die Intensität des reflektierten Signals sowie den Ring-Index des jeweiligen Lasers; der Zeitstempel wird direkt aus der LiDAR-Firmware übernommen. Die Punktwolken werden über das lokale ROS~2-Netz an den Laptop übertragen, auf dem sie wahlweise in \emph{RViz2} visualisiert oder über die GUI verarbeitet werden können.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.85\textwidth]{Bilder/messkette_sensordaten.png}
+  \caption{Aufbau der Datenerfassung mit dem Ouster~OS1-LiDAR (überarbeitet nach \cite{wendel2025}).}
+  \label{fig:messkette_sensordaten}
+\end{figure}
+
+\subsection{Pipeline (Umsetzung)}
+Abbildung~\ref{fig:ros2-pipeline-alltopics} zeigt die ROS~2-Pipeline von der Aufnahme über Vorverarbeitung, Bodensegmentierung und Cluster/Bounding-Boxes bis zur Objektverfolgung. Jeder Knoten hat klar definierte Ein-/Ausgänge und Topics.
+
+\subsection*{Knotenübersicht (Ein-/Ausgänge und Parameter)}
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{|l|l|l|l|}
+    \hline
+    \textbf{Node} & \textbf{Eingang (Typ)} & \textbf{Ausgang (Typ)} & \textbf{Schlüsselparameter} \\ \hline
+    Input     & /ouster/points (PointCloud2) & /points\_cropped (PointCloud2) & ROI (min/max) \\ \hline
+    CropBox   & /points\_cropped (PointCloud2) & /points\_voxel (PointCloud2) & Box, keep\_organized \\ \hline
+    VoxelGrid & /points\_voxel (PointCloud2) & /obstacle\_points (PointCloud2) & voxel\_size \\ \hline
+    GroundSeg & /obstacle\_points (PointCloud2) & /detections\_raw (custom) & max\_plane\_dist, iters \\ \hline
+    Clustering& /detections\_raw (custom) & /tracks\_raw (custom) & cluster\_tol, min/max\_size \\ \hline
+    Tracking  & /tracks\_raw (custom) & /tracks\_markers (viz) & dt, gating \\ \hline
+  \end{tabular}
+  \caption{Knoten, I/O-Themen und exemplarische Parameter der Pipeline.}
+  \label{tab:nodes-io}
+\end{table}
+
+\begin{figure}
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    process/.style={rectangle, rounded corners, draw=black, fill=blue!5,
+                    text centered, minimum width=4.2cm, minimum height=1cm},
+    startstop/.style={ellipse, draw=black, fill=gray!15,
+                      text centered, minimum width=3cm, minimum height=1cm},
+    rviz/.style={rectangle, draw=black, fill=green!10, rounded corners,
+                 text centered, minimum width=3.5cm, minimum height=0.9cm,
+                 font=\scriptsize},
+    arrow/.style={thick,->,>=stealth},
+    every node/.style={font=\small}
+  ]
+
+  % Hauptlinie
+  \node (start)   [startstop] {Start};
+  \node (input)   [process, below of=start] {Messdaten einlesen};
+  \node (crop)    [process, below of=input] {CropBox-Filter};
+  \node (voxel)   [process, below of=crop] {VoxelGrid-Filter};
+  \node (ground)  [process, below of=voxel] {Bodensegmentierung};
+  \node (cluster) [process, below of=ground] {Cluster-Extraktion \& Bounding Boxes};
+  \node (track)   [process, below of=cluster] {Objektverfolgung};
+  \node (end)     [startstop, below of=track] {Ende};
+
+  % RViz2-Knoten (rechts)
+  \node (rviz_input)  [rviz, right=4.1cm of input]  {RViz2};
+  \node (rviz_crop)   [rviz, right=4.1cm of crop]   {RViz2};
+  \node (rviz_voxel)  [rviz, right=4.1cm of voxel]  {RViz2};
+  \node (rviz_ground) [rviz, right=4.1cm of ground] {RViz2};
+  \node (rviz_cluster)[rviz, right=2.8cm of cluster]{RViz2};
+  \node (rviz_track)  [rviz, right=4.1cm of track]  {RViz2};
+
+  % Vertikale Pfeile (Pipeline)
+  \draw[arrow] (start) -- (input);
+  \draw[arrow] (input) -- node[right]{\scriptsize \texttt{/ouster/points}} (crop);
+  \draw[arrow] (crop)  -- node[right]{\scriptsize \texttt{/points\_cropped}} (voxel);
+  \draw[arrow] (voxel) -- node[right]{\scriptsize \texttt{/points\_voxel}} (ground);
+  \draw[arrow] (ground)-- node[right]{\scriptsize \texttt{/obstacle\_points}} (cluster);
+  \draw[arrow] (cluster)-- node[right]{\scriptsize \texttt{/detections\_raw}} (track);
+  \draw[arrow] (track) -- node[right]{\scriptsize \texttt{/tracks\_raw}} (end);
+
+  % Pfeile zu RViz2 (alle Schritte)
+  \draw[arrow] (input.east)  -- node[above,sloped]{\scriptsize \texttt{/ouster/points}} (rviz_input.west);
+  \draw[arrow] (crop.east)   -- node[above,sloped]{\scriptsize \texttt{/points\_cropped}} (rviz_crop.west);
+  \draw[arrow] (voxel.east)  -- node[above,sloped]{\scriptsize \texttt{/points\_voxel}} (rviz_voxel.west);
+  \draw[arrow] (ground.east) -- node[above,sloped]{\scriptsize \texttt{/obstacle\_points}} (rviz_ground.west);
+  \draw[arrow] (cluster.east)-- node[above,sloped]{\scriptsize \texttt{/detections\_markers}} (rviz_cluster.west);
+  \draw[arrow] (track.east)  -- node[above,sloped]{\scriptsize \texttt{/tracks\_markers}} (rviz_track.west);
+
+  % Caption & Label
+  \end{tikzpicture}
+  \caption{ROS~2-Algorithmus mit Nodes, Topic-Verbindungen und RViz2-Ausgaben.}
+  \label{fig:ros2-pipeline-alltopics}
+\end{figure}
+
+\section{Deployment und Packaging}
+Die Umsetzung erfolgt im ROS~2-Workspace (\texttt{colcon}); \texttt{src/} enthält die Pakete, \texttt{build/}/\texttt{install/}/\texttt{log/} werden erzeugt. Abhängigkeiten werden in \texttt{package.xml} deklariert und in \texttt{CMakeLists.txt} gebunden. Eine Trennung in Bibliotheken (Kernlogik) und Executables (ROS~2-Anbindung) erhöht die Wiederverwendbarkeit.
+
+\subsection*{Launch, Parameter und Namensräume}
+Start und Parametrisierung erfolgen über Launch-Dateien und \texttt{.yaml}-Parameter (z.\,B. Voxelgröße, Filterradien, QoS-Tiefe). Namensräume strukturieren Topics (z.\,B. Sensorpfad, Verarbeitungspfad) und erlauben parallele Instanziierung. Visualisierung: konsequent \textbf{RViz2}.
+
+\subsection*{Build und Start (Beispiel)}
+\begin{verbatim}
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+source install/setup.bash
+ros2 launch my_pipeline bringup.launch.py use_sim_time:=false
+\end{verbatim}
+
+\subsection*{Minimalbeispiele: package.xml und CMake}
+\begin{verbatim}
+<!-- package.xml (Ausschnitt) -->
+<package format="3">
+  <name>my_pipeline</name>
+  <version>0.1.0</version>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>pcl_conversions</depend>
+</package>
+
+# CMakeLists.txt (Ausschnitt)
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(PCL REQUIRED)
+add_executable(voxel_node src/voxel_node.cpp)
+ament_target_dependencies(voxel_node rclcpp sensor_msgs)
+target_link_libraries(voxel_node ${PCL_LIBRARIES})
+install(TARGETS voxel_node DESTINATION lib/${PROJECT_NAME})
+\end{verbatim}
+
+\section{Leistungsmetriken und Verifikation}
+\subsection*{E2E-Latenz}
+Ziel: \(<\,100\,\text{ms}\) bei \(10\,\text{Hz}\). Methodik: Zeitstempel an Modulgrenzen (Eingang/Ausgang) und Auswertung von Mittelwert, P95, P99 über lange Sequenzen; Messung im Live-Betrieb und bei Wiedergabe identischer Daten aus \texttt{rosbag2}. Instrumentierung: Eingangszeit aus \texttt{header.stamp}; Zwischenzeiten in Modulen erfassen/mitführen. Gemeinsame Zeitbasis (z.\,B. deaktivierte Simulationszeit, externe Synchronisation) wird vorausgesetzt.
+
+\subsection*{Ressourcennutzung (CPU/RAM)}
+Messung pro Knoten unter repräsentativer Last. Optimierungen (Datenlayout, Kopiervermeidung, Vorallokation) werden dokumentiert und quantifiziert. Hilfsmittel: \texttt{ros2 topic hz/bw/delay}, Systemprofiler (\texttt{top}/\texttt{htop}), persistente Artefakte (CSV/JSON) für Variantenvergleiche.
+
+\subsection*{Trace-gestützte Analyse und Fehlermodi}
+Feingranulare Messungen mit Tracing (z.\,B. \emph{ros2\_tracing}) erfassen Callback-Laufzeiten, Scheduling-Lücken und E2E-Latenzen. Häufige Fehlermodi: überfüllte Queues (zu kleine Tiefe), unpassende QoS-Mischungen zwischen Verarbeitung/Visualisierung, fehlendes \emph{intra-process}, unsaubere Zeitbasen. Gegenmaßnahmen sind in den jeweiligen Abschnitten benannt.
