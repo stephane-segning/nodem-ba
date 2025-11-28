@@ -205,4 +205,9 @@ Tracks werden als \texttt{vision\_msgs/Detection3D} ausgegeben (Zentrum, Größe
 
 \texttt{ids\_probe.py} beobachtet das Marker-Topic \texttt{tracks\_markers} und führt ein Lebensdauerkonto pro Track-ID. Für jede Spur werden Geburt und Abschluss (bei Leerlauf länger als \texttt{idle\_timeout}) gezählt, aktive sowie abgeschlossene mittlere Lebensdauern berechnet und die Geburts- bzw. Abschlussrate pro Minute ausgegeben. Der Skript läuft als eigener \ac{ROS}~2-Node, greift auf die bestehenden Topics zu und liefert so eine objektive Einschätzung der ID-Stabilität. Alle zugehörigen Auswerteskripte befinden sich zentral im digitalen Anhang (Abschnitt~\ref{anhang:skripte}).
 
-Die Messergebnisse der Verifikation sind in Abschnitt~\ref{label:gerade_strecke} zusammengestellt und belegen eine stabile Zuordnung auch bei kurzzeitigen Okklusionen.
+Die Messergebnisse der Verifikation sind in Abschnitt~\ref{gerade_strecke} zusammengestellt.
+
+\section{Zusammenfassung}
+Der implementierte Tracker auf Basis eines 2D-Kalman-Filters und des Ungarischen Algorithmus gewährleistet eine konsistente Verfolgung der detektierten Objekte. Durch geeignetes Gating und Track-Management werden Fehlassoziationen minimiert und kurzzeitige Verdeckungen überbrückt. Damit ist die algorithmische Verarbeitungskette vollständig beschrieben.
+
+Das folgende Kapitel widmet sich der Integration dieser Komponenten in die bestehende Softwareumgebung und Benutzeroberfläche des Versuchsträgers.

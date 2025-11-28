@@ -329,3 +329,8 @@ Als Ergebnis ergibt sich eine Punktwolke, die frei von Bodenpunkten ist (siehe A
   \caption{Vergleich der ursprünglichen Punktwolke (links) und der nach dem \ac{RANSAC}-Algorithmus gefilterten Punktwolke (rechts) (2025-10-15-Messdaten/2025-10-15-VK-OL-005)}
   \label{fig:ransac_compare}
 \end{figure}
+
+\section{Zusammenfassung}
+Das implementierte RANSAC-Verfahren ermöglicht eine robuste und effiziente Trennung von Boden- und Hindernispunkten. Durch die iterative Ebenenschätzung werden auch bei leicht geneigten Fahrbahnen zuverlässige Ergebnisse erzielt, während der Rechenaufwand durch die vorangegangene Voxel-Filterung gering bleibt.
+
+Die resultierende Hindernis-Punktwolke bildet die Eingangsdaten für das folgende Kapitel, in dem zusammengehörige Punkte zu Clustern gruppiert und als Objekte abstrahiert werden.

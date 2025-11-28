@@ -6,13 +6,13 @@ Dieses Kapitel zeichnet die technische Systemarchitektur der \ac{LiDAR}-basierte
 \section{Systemübersicht}
 \subsection{Anforderungen an den Algorithmus}
 
-Die Punktwolken des Ouster~\ac{OS1} bilden die Ausgangsbasis einer durchgängigen Verarbeitungskette, die Bodenpunkte unterdrückt, Objekte als Cluster mit Bounding-Boxen herausarbeitet und deren Bewegung verfolgt. Die hohe Winkelauflösung des Sensors liefert dafür detaillierte Geometrien \parencite{OusterOS1}; zugleich verlangt sie nach einer stabilen Vorverarbeitung, die Ausreißer und Rauschen entfernt, die Punktdichte gezielt reduziert und trotzdem genügend Struktur für verlässliche Objektgrenzen erhält. Dieses Vorgehen folgt etablierten Empfehlungen der Fahrzeugautomatisierungs-Literatur: Deterministische Filterung und kontrollierte Latenz erhöhen die funktionale Sicherheit \parencite{Arnold2019Survey,Macenski2022ROS2}, während eine konsequente Bodenentfernung die Falsch-Positiv-Rate reduziert und das Clustering präziser macht \parencite{gomes2023survey}. Konfigurierbare Parameter stellen sicher, dass die gleiche Pipeline sowohl in engen urbanen Szenen als auch auf offenen Flächen oder geneigten Fahrbahnen zuverlässig arbeitet.
+Die Punktwolken des Ouster~\ac{OS1} bilden die Ausgangsbasis einer durchgängigen Verarbeitungskette, die Bodenpunkte unterdrückt, Objekte als Cluster mit Bounding-Boxen herausarbeitet und deren Bewegung verfolgt. Die hohe Winkelauflösung des Sensors liefert dafür detaillierte Geometrien \parencite{OusterOS1}; zugleich verlangt sie nach einer stabilen Vorverarbeitung, die Ausreißer und Rauschen entfernt, die Punktdichte gezielt reduziert und trotzdem genügend Struktur für verlässliche Objektgrenzen erhält. Dieses Vorgehen folgt etablierten Empfehlungen der Fahrzeugautomatisierungs-Literatur: Deterministische Filterung und kontrollierte Latenz erhöhen die funktionale Sicherheit \parencite{Arnold2019Survey,Macenski2022ROS2}, während eine konsequente Bodenentfernung die Falsch-Positiv-Rate reduziert und das Clustering präziser macht \parencite{gomes2023survey}. Konfigurierbare Parameter stellen sicher, dass die gleiche Verarbeitungskette sowohl in engen urbanen Szenen als auch auf offenen Flächen oder geneigten Fahrbahnen zuverlässig arbeitet.
 
 Die Hardware- und Softwareanforderungen bauen auf dieser Pipeline auf: Ziel ist eine End-to-End-Latenz von unter \(100\,\text{ms}\) bei \(10\,\text{Hz}\) mit moderatem Verbrauch von CPU- und RAM-Ressourcen. Alle \ac{ROS}~2-Nachrichten sind klar dokumentiert, und die Ausgaben lassen sich maschinell weiterverarbeiten oder im Terminal lesen. Die Zielplattform sind mobile Rechner oder Embedded-PCs mit mindestens sechs CPU-Kernen (\(\geq 2{,}5\,\text{GHz}\)) und \(\geq 16\,\text{GB}\) RAM, ohne spezialisierte GPU-Anforderungen. Die Integration in die GUI von \emph{Carception~X} \parencite{IFZN_Projekte} stellt sicher, dass alle Betriebsmodi (Sensor, Sensor + PC, Sensor + PC + Embedded PC) unterstützt werden \parencite{Wendel2025}.
 
 Die Leistungsbewertung nutzt klar definierte Kriterien: Der Restbodenanteil soll je Rasterzelle (\(2\,\text{m}\) \(\times\) \(2\,\text{m}\)) unter \(5\,\%\) bleiben, während tragende Objektpunkte im Frontbereich (\(30\,\text{m}\)) höchstens um \(10\,\%\) reduziert werden dürfen. Ein Downsampling gilt als verlustarm, wenn mindestens \(70\,\%\) der Ausgangsdichte in einem \(3\,\text{m}\)\(\times\) \(3\,\text{m}\)-Gitter erhalten bleibt und Bounding-Box-Kanten höchstens um \(0{,}1\,\text{m}\) vom Referenzwert abweichen. Laufzeitparameter wie Voxelgröße, \ac{RANSAC}-Abstandsgrenze und Iterationszahl, Cluster-Toleranz sowie Minimal- und Maximalpunktzahlen werden über Launch-Dateien oder \texttt{ros2 param set} ohne Neustart angepasst. Eine Echtzeitvisualisierung in RViz2 oder der GUI macht Rohdaten, Bodenfilter, Cluster und Tracks bei mindestens \(10\,\text{\ac{FPS}}\) sichtbar.
 
-Die detaillierten Anforderungen und dazugehörigen Messkriterien sind in Tabelle~\ref{tab:anforderungen_messkette} zusammengefasst.
+Die detaillierten Anforderungen und dazugehörigen Messkriterien sind in Tabelle~\ref{tab:anforderungen_verarbeitungskette} zusammengefasst.
 
   \begin{table}[H]
     \centering
@@ -72,8 +72,8 @@ Darstellung von Rohdaten, Bodenfilter, Clustern und Tracks in RViz2/GUI mit $\ge
 \hline
 
 \end{tabularx}
-\caption{Anforderungen an die Verarbeitungsstrecke mit zugehörigen Messkriterien}
-\label{tab:anforderungen_messkette}
+\caption{Anforderungen an die Verarbeitungskette mit zugehörigen Messkriterien}
+\label{tab:anforderungen_verarbeitungskette}
 \end{table}
 
 
@@ -365,7 +365,7 @@ Die im Folgenden betrachteten Metriken sind kein Selbstzweck, sondern direkt aus
 Anforderungsdefinition und dem Stand der Technik abgeleitet. Veröffentlichte Arbeiten zu
 Echtzeit-Objekterkennung evaluieren systematisch Ende-zu-Ende-Latenz sowie CPU/RAM-Bedarf
 als zentrale Gütekriterien (vgl. \cite{feng2021survey}). Genau diese Größen entsprechen den in
-Tabelle~\ref{tab:anforderungen_messkette} formulierten Messkriterien: \textbf{Anforderung~6}
+Tabelle~\ref{tab:anforderungen_verarbeitungskette} formulierten Messkriterien: \textbf{Anforderung~6}
 fordert eine Ende-zu-Ende-Latenz von unter \(100\,\text{ms}\) bei stabilen \(10\,\text{Hz}\),
 \textbf{Anforderung~7} begrenzt die Auslastung auf \(\leq 60\,\%\) CPU/RAM auf Standardhardware.
 Die gewählten Verifikationsschritte (Zeitstempel-Instrumentierung für Latenz, Profiler für
@@ -381,3 +381,8 @@ Außerdem wird ein Python Skript ausgeführt zur Berechnung der CPU Auslastung p
 
 \subsection{Objekterkennung und -verfolgung}
 Die Güte der Objektdetektion und -verfolgung wurde primär mit zwei ROS-Tools bewertet: \texttt{ids\_probe.py} und \texttt{frame\_loss\_probe.py}. Erstere verfolgt die Lebenszyklen einzelner Track-IDs und meldet pro Auswertefenster die Anzahl neu erzeugter IDs (\emph{births/min}), abgeschlossener Tracks (\emph{completed/min}) sowie die mediane aktive Lebensdauer sowohl laufender als auch bereits finalisierter Tracks. Damit lassen sich übermäßige ID-Wechsel oder instabile Verfolgungen unmittelbar erkennen. \texttt{frame\_loss\_probe.py} misst hingegen für jede Stufe der Verarbeitungskette die effektive Nachrichtenrate und berechnet Durchlassraten zwischen den benachbarten Topics (\emph{pass\%}) sowie gezählte Lücken (\emph{gaps}) basierend auf ausbleibenden Nachrichten über eine adaptive Schwellwertlogik. So wird transparent, an welcher Stelle Frames verloren gehen oder die Frequenz einbricht, und wie sich dies auf die nachgelagerten Detektions- und Tracking-Ergebnisse auswirkt.
+
+\section{Zusammenfassung}
+Die vorgestellte Systemarchitektur definiert eine modulare und echtzeitfähige Verarbeitungskette, die auf etablierten ROS~2-Standards und PCL-Algorithmen basiert. Durch die klare Trennung in funktionale Knoten, die Verwendung standardisierter Nachrichtenformate und die Definition messbarer Qualitätskriterien ist das System sowohl wartbar als auch objektiv bewertbar.
+
+Im folgenden Kapitel wird der erste Schritt dieser Kette, die Vorverarbeitung der Punktwolken, detailliert beschrieben und implementiert.

@@ -1,7 +1,7 @@
 \chapter{Vorverarbeitung}
 \label{ch:vorverarbeitung}
 
-Dieses Kapitel bündelt die Vorverarbeitungsschritte der \ac{LiDAR}-Punktwolken. Ziel ist es, Datenvolumen und Rauschen vor den nachfolgenden Modulen zu reduzieren und gleichzeitig eine gleichmäßig verteilte Datenbasis für Segmentierung und Clustering zu schaffen. Im Zentrum stehen die räumliche Begrenzung per CropBox und die Ausdünnung mittels VoxelGrid, jeweils mit den verwendeten Parametern und der Umsetzung in der \ac{ROS}~2-Pipeline.
+Dieses Kapitel bündelt die Vorverarbeitungsschritte der \ac{LiDAR}-Punktwolken. Ziel ist es, Datenvolumen und Rauschen vor den nachfolgenden Modulen zu reduzieren und gleichzeitig eine gleichmäßig verteilte Datenbasis für Segmentierung und Clustering zu schaffen. Im Zentrum stehen die räumliche Begrenzung per CropBox und die Ausdünnung mittels VoxelGrid, jeweils mit den verwendeten Parametern und der Umsetzung in der \ac{ROS}~2-Verarbeitungskette.
 
 \section{CropBox-Filter}
 \label{sec:cropbox}
@@ -175,3 +175,8 @@ ohne dass dabei wichtige Strukturen der Szene verloren gehen.
   \caption{Vergleich nach \textit{CropBox} (links) und nach \textit{VoxelGrid-Filter} (rechts) (2025-10-15-Messdaten/2025-10-15-VK-OL-005)}
   \label{fig:voxel_compare}
 \end{figure}
+
+\section{Zusammenfassung}
+Die implementierte Vorverarbeitung reduziert das Datenvolumen signifikant und schafft eine homogene Punktverteilung, ohne relevante geometrische Informationen zu verlieren. Durch die Kombination aus CropBox-Filter zur räumlichen Begrenzung und VoxelGrid-Filter zur Dichtehomogenisierung wird eine stabile und effiziente Basis für die nachfolgenden Schritte geschaffen.
+
+Das so aufbereitete Datenmaterial wird im nächsten Kapitel der Bodensegmentierung zugeführt, um befahrbare Flächen von potenziellen Hindernissen zu trennen.
