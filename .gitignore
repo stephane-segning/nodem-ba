@@ -4,4 +4,4 @@
 !*.tex
 !*.bib
 !*.md
-!docker-compose.yaml
+!compose.yaml
