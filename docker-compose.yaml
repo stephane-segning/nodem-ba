@@ -13,22 +13,7 @@ services:
         mkdir -p build &&
         latexmk -pdf -interaction=nonstopmode -file-line-error \
           -outdir=build -auxdir=build \
-          entry.tex
-  pdf-ba:
-    image: texlive/texlive:latest-full
-    working_dir: /work
-    user: "${UID:-1000}:${GID:-1000}"
-    volumes:
-      - .:/work
-      - ./build:/work/build
-    command:
-      - sh
-      - -lc
-      - >
-        mkdir -p build &&
-        latexmk -pdf -interaction=nonstopmode -file-line-error \
-          -outdir=build -auxdir=build \
-          .docker/ba.tex
+          main.tex
 
   clean:
     image: texlive/texlive:latest-full
