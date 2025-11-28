@@ -11,7 +11,7 @@ Damit ist \ac{LiDAR} insbesondere für Hinderniserkennung, Bahnplanung und robus
 \section{Sensoraufbau}
 \label{sec:sensoraufbau}
 
-Ein \ac{LiDAR}-Sensor umfasst Sendeoptik und Strahlablenkung, Empfangsoptik und Lichtsensor sowie Auslese- und Steuerungselektronik (vgl. Abb.~\ref{fig:sensoraufbau}). Die nachfolgenden Abschnitte skizzieren den Beitrag der jeweiligen Komponenten zum Gesamtsystem.
+Ein \ac{LiDAR}-Sensor umfasst Sendeoptik und Strahlablenkung, Empfangsoptik und Lichtsensor sowie Auslese- und Steuerungselektronik (siehe Abb.~\ref{fig:sensoraufbau}). Die nachfolgenden Abschnitte skizzieren den Beitrag der jeweiligen Komponenten zum Gesamtsystem.
 
 \begin{figure}[H]
     \centering
@@ -107,7 +107,7 @@ Wie in Abbildung~\ref{fig:dtof} zu sehen, wird das dToF-Messprinzip durch die di
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{Bilder/Schematisches Beispiel eines direct ToF.png}
-    \caption{Schematisches Beispiel eines direct Time-Of-Flight (dToF) \parencite{beuth2021handbuch}
+    \caption{Schematisches Beispiel eines direct Time-of-Flight (dToF) \parencite{beuth2021handbuch}
 }
     \label{fig:dtof}
 \end{figure}
@@ -169,7 +169,7 @@ Die Leistungsfähigkeit optischer \ac{LiDAR}-Sensoren wird von mehreren systemat
 
 Auch der Einfallswinkel des Laserstrahls sowie die optische Reflektivität der Oberfläche wirken sich auf die Signalstärke aus: Flache Winkel oder dunkle, absorbierende Materialien reduzieren die Signalenergie und erhöhen damit das Rauschen bzw. die Wahrscheinlichkeit von Fehlmessungen \cite{beuth2021handbuch}. Zusätzlich begrenzt die Strahldivergenz des Lasers die räumliche Auflösung, da der Lichtfleck mit zunehmender Entfernung größer wird und Reflexionen von benachbarten Objekten überlagert werden können.
 
-Neben optischen Einflüssen spielen auch umwelt- und systembedingte Faktoren eine Rolle. temperaturbedingte Messabweichungen im Lasersystem oder in der Empfangselektronik können den Messoffset verschieben oder die Verstärkung verändern. Mechanische Komponenten – insbesondere bei rotierenden LiDARs – unterliegen Toleranzen und Vibrationen, beispielsweise durch Schwankungen der Rotordrehzahl, was zu nichtlinearen Abtastwinkeln oder zeitlichen Versätzen führt (\cite{levinson2011towards}). Diese Effekte wirken sich unmittelbar auf Reichweite, Präzision und Datenkonsistenz aus und können nachfolgende Verarbeitungsschritte wie Segmentierung, Objekterkennung oder Klassifikation beeinträchtigen.
+Neben optischen Einflüssen spielen auch umwelt- und systembedingte Faktoren eine Rolle. temperaturbedingte Messabweichungen im Lasersystem oder in der Empfangselektronik können den Messoffset verschieben oder die Verstärkung verändern. Mechanische Komponenten – insbesondere bei rotierenden LiDARs – unterliegen Toleranzen und Vibrationen, beispielsweise durch Schwankungen der Rotordrehzahl. Dies führt zu nichtlinearen Abtastwinkeln oder zeitlichen Versätzen (\cite{levinson2011towards}). Diese Effekte wirken sich unmittelbar auf Reichweite, Präzision und Datenkonsistenz aus und können nachfolgende Verarbeitungsschritte wie Segmentierung, Objekterkennung oder Klassifikation beeinträchtigen.
 
 Um in sicherheitsrelevanten Anwendungen robuste Umfeldmodelle zu gewährleisten, sind daher geeignete Maßnahmen zur Signalkonditionierung, Filterung und Fehlerkompensation notwendig. Dazu gehören Rauschreduktion, adaptive Schwellenwertverfahren, geometrische Konsistenzprüfungen sowie modellbasierte Korrekturen, um messtechnische Artefakte zu minimieren und Fehlinterpretationen im Gesamtsystem zu vermeiden.
 
@@ -298,7 +298,7 @@ Dies verhindert spontane Fehldetektionen und stabilisiert die Szeneinterpretatio
 \subsection{Spezifische Eigenschaften des Ouster OS1}
 \label{sec:eigenschaften}
 
-Der \emph{Ouster OS1} (vgl. Abbildung~\ref{fig:ouster_os1}) ist ein rotationssymmetrischer 360°-\ac{LiDAR}, der eine hochauflösende dreidimensionale Erfassung der Umgebung ermöglicht. Die im Projekt verwendete Variante verfügt über eine vertikale Auflösung von 128 Kanälen. In der maximalen Konfiguration erreicht der Sensor eine horizontale Auflösung von 2{,}048 Abtastungen pro Umdrehung, was zu einer Punktwolke mit bis zu 262\,144 Messpunkten pro Scan führt.
+Der \emph{Ouster OS1} (siehe Abbildung~\ref{fig:ouster_os1}) ist ein rotationssymmetrischer 360°-\ac{LiDAR}, der eine hochauflösende dreidimensionale Erfassung der Umgebung ermöglicht. Die im Projekt verwendete Variante verfügt über eine vertikale Auflösung von 128 Kanälen. In der maximalen Konfiguration erreicht der Sensor eine horizontale Auflösung von 2{,}048 Abtastungen pro Umdrehung, was zu einer Punktwolke mit bis zu 262\,144 Messpunkten pro Scan führt.
 
 \begin{figure}[H]
     \centering

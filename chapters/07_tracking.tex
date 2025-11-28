@@ -1,6 +1,6 @@
 \chapter{Objektverfolgung}
 
-Dieses Kapitel beschreibt, wie die zuvor extrahierten Detektionen über die Zeit hinweg zu konsistenten Objektspuren zusammengeführt werden. Der Fokus liegt auf dem zweidimensionalen Kalman-Filter mit passendem Bewegungsmodell, der Mess- und Zuordnungslogik mittels Ungarischem Algorithmus sowie dem Track-Management. Abschließend werden die Testschritte und die beobachtete Stabilität der Track-IDs zusammengefasst.
+Die Zusammenführung der zuvor extrahierten Detektionen zu konsistenten Objektspuren über die Zeit hinweg ist Gegenstand dieses Kapitels. Der Fokus liegt auf dem zweidimensionalen Kalman-Filter mit passendem Bewegungsmodell, der Mess- und Zuordnungslogik mittels Ungarischem Algorithmus sowie dem Track-Management. Abschließend werden die Testschritte und die beobachtete Stabilität der Track-IDs zusammengefasst.
 
 \section{Prinzip}
 
@@ -203,7 +203,7 @@ Tracks werden als \texttt{vision\_msgs/Detection3D} ausgegeben (Zentrum, Größe
 \section{Test und Ergebnis}
 \label{sec:ergebnis_tracking}
 
-\texttt{ids\_probe.py} beobachtet das Marker-Topic \texttt{tracks\_markers} und führt ein Lebensdauerkonto pro Track-ID. Für jede Spur werden Geburt und Abschluss (bei Leerlauf länger als \texttt{idle\_timeout}) gezählt, aktive sowie abgeschlossene mittlere Lebensdauern berechnet und die Geburts- bzw. Abschlussrate pro Minute ausgegeben. Der Skript läuft als eigener \ac{ROS}~2-Node, greift auf die bestehenden Topics zu und liefert so eine objektive Einschätzung der ID-Stabilität. Alle zugehörigen Auswerteskripte befinden sich zentral im digitalen Anhang (Abschnitt~\ref{anhang:skripte}).
+\texttt{ids\_probe.py} beobachtet das Marker-Topic \texttt{tracks\_markers} und führt ein Lebensdauerkonto pro Track-ID. Für jede Spur werden Geburt und Abschluss (bei Leerlauf länger als \texttt{idle\_timeout}) gezählt, aktive sowie abgeschlossene mittlere Lebensdauern berechnet und die Geburts- bzw. Abschlussrate pro Minute ausgegeben. Das Skript läuft als eigener \ac{ROS}~2-Node, greift auf die bestehenden Topics zu und liefert so eine objektive Einschätzung der ID-Stabilität. Alle zugehörigen Auswerteskripte befinden sich zentral im digitalen Anhang (Abschnitt~\ref{anhang:skripte}).
 
 Die Messergebnisse der Verifikation sind in Abschnitt~\ref{gerade_strecke} zusammengestellt.
 

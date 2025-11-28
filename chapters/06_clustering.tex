@@ -37,7 +37,7 @@ Richtwerte im Zusammenspiel mit einem Voxel-Filter (Voxelkantenlänge \(\approx\
 \paragraph{Praktische Aspekte}
 - \emph{Komplexität}: der Flaschenhals ist die Nachbarsuche; Voxel-Dowsampling reduziert \(n\) und beschleunigt die Suche signifikant \parencite{rusu2011pcl}.
 - \emph{Parameterkopplung}: sinnvolle Werte von \(\varepsilon\) korrelieren mit der Voxelgröße. Faustregel: \(\varepsilon\approx 2\dots 3\)\,\(\times\)\,\texttt{voxel\_size}; bei anisotroper Punktdichte (winkelbasiertes Abtastgitter) verstärkt sich dieser Effekt \parencite{himmelsbach2010fast}.
-- \emph{Reichweiten-Adaption (optional)}: \(\varepsilon(r)=\alpha r+\beta\) kann Fernbereichs-Fragmentierung reduzieren, wie in Reichweiten-bewussten Segmentierungen gezeigt \parencite{bogoslavskyi2016fast}; in dieser Arbeit verwenden wir für Determinismus und Einfachheit eine konstante \(\varepsilon\).
+- \emph{Reichweiten-Adaption (optional)}: \(\varepsilon(r)=\alpha r+\beta\) kann Fernbereichs-Fragmentierung reduzieren, wie in Reichweiten-bewussten Segmentierungen gezeigt \parencite{bogoslavskyi2016fast}; in dieser Arbeit wird für Determinismus und Einfachheit eine konstante \(\varepsilon\) verwendet.
 
 \begin{table}[H]
   \centering
@@ -134,4 +134,4 @@ Abbildung~\ref{fig:clustering_result} zeigt den Cluster eines detektierten Pkw m
 \section{Zusammenfassung}
 Die euklidische Clusterung in Kombination mit AABB-Bounding-Boxen liefert eine stabile Objektsegmentierung, die auch bei variabler Punktdichte zuverlässig funktioniert. Durch die bewusste Wahl deterministischer Verfahren und die Kopplung der Parameter an die Voxelgröße wird eine echtzeitfähige Extraktion potenzieller Verkehrsteilnehmer erreicht.
 
-Diese Detektionen bilden die Grundlage für die anschließende Objektverfolgung, die im nächsten Kapitel behandelt wird und zeitliche Konsistenz in die erkannte Szene bringt.
+Diese Detektionen bilden die Grundlage für die anschließende Objektverfolgung. Diese wird im folgenden Kapitel behandelt und bringt zeitliche Konsistenz in die erkannte Szene.

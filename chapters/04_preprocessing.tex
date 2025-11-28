@@ -1,7 +1,7 @@
 \chapter{Vorverarbeitung}
 \label{ch:vorverarbeitung}
 
-Dieses Kapitel bündelt die Vorverarbeitungsschritte der \ac{LiDAR}-Punktwolken. Ziel ist es, Datenvolumen und Rauschen vor den nachfolgenden Modulen zu reduzieren und gleichzeitig eine gleichmäßig verteilte Datenbasis für Segmentierung und Clustering zu schaffen. Im Zentrum stehen die räumliche Begrenzung per CropBox und die Ausdünnung mittels VoxelGrid, jeweils mit den verwendeten Parametern und der Umsetzung in der \ac{ROS}~2-Verarbeitungskette.
+Die Vorverarbeitungsschritte der \ac{LiDAR}-Punktwolken werden in diesem Kapitel gebündelt. Ziel ist es, Datenvolumen und Rauschen vor den nachfolgenden Modulen zu reduzieren und gleichzeitig eine gleichmäßig verteilte Datenbasis für Segmentierung und Clustering zu schaffen. Im Zentrum stehen die räumliche Begrenzung per CropBox und die Ausdünnung mittels VoxelGrid, jeweils mit den verwendeten Parametern und der Umsetzung in der \ac{ROS}~2-Verarbeitungskette.
 
 \section{CropBox-Filter}
 \label{sec:cropbox}
@@ -36,7 +36,7 @@ for (; ix != ix.end(); ++ix, ++iy, ++iz) {
 }
 \end{verbatim}
 
-Neben den Pflichtfeldern \(x,y,z\) unterstützt der Node optionale Felder (\texttt{intensity}, \texttt{ring}) und erlaubt über die Callback-API \texttt{add\_on\_set\_parameters\_callback} eine Laufzeitänderung der Grenzen ohne Neustart des Nodes. Tabelle~\ref{tab:cropbox_params} fasst die Startparameter zusammen.
+Neben den Pflichtfeldern \(x,y,z\) unterstützt der Node optionale Felder (\texttt{intensity}, \texttt{ring}) und erlaubt über die Callback-API \texttt{add\_on\_set\_parameters\_callback} eine Laufzeitänderung der Grenzen ohne Neustart des Nodes. Die Startparameter sind in Tabelle~\ref{tab:cropbox_params} zusammengefasst.
 
 \begin{table}[H]
   \centering
