@@ -1,5 +1,5 @@
 \chapter{Vorverarbeitung}
-\label{chap:vorverarbeitung}
+\label{ch:vorverarbeitung}
 
 Dieses Kapitel bündelt die Vorverarbeitungsschritte der \ac{LiDAR}-Punktwolken. Ziel ist es, Datenvolumen und Rauschen vor den nachfolgenden Modulen zu reduzieren und gleichzeitig eine gleichmäßig verteilte Datenbasis für Segmentierung und Clustering zu schaffen. Im Zentrum stehen die räumliche Begrenzung per CropBox und die Ausdünnung mittels VoxelGrid, jeweils mit den verwendeten Parametern und der Umsetzung in der \ac{ROS}~2-Pipeline.
 
@@ -17,7 +17,7 @@ gilt, wobei \(\mathbf{R}\in\mathbb{R}^{3\times4}\) die ersten drei Zeilen der \a
 Die Grenzen wurden schrittweise verengt: Ausgangspunkt war eine großzügige Box \(\mathbf{b}_\text{min}=[-20,-15,-3]^\top\), \(\mathbf{b}_\text{max}=[20,15,5]^\top\), die anschließend entlang \(x\), \(y\) und \(z\) in \(0{,}5\,\mathrm{m}\)-Schritten reduziert wurde. Jede Variante wurde anhand der Detektionspräzision nach dem Clustering, der verbleibenden Punktzahl und des abgeschnittenen Fahrbahnrands in \ac{RViz} bewertet. Dieses iterative \ac{ROI}-Tuning folgt gängigen Empfehlungen zur Falsch-Alarm-Reduktion \cite{hu2013robust,himmelsbach2010fast}. Die finalen Grenzen \(\mathbf{b}_\text{min}=[-10,-6,-3]^\top\) und \(\mathbf{b}_\text{max}=[10,6,5]^\top\) balancieren Datenreduktion und stabile Objektabdeckung im urbanen Messfeld.
 
 \subsection{Implementierung}
-Der \texttt{crop\_box\_node} wurde in C++ unter \ac{ROS}~2 umgesetzt und nutzt die \ac{PCL}-Schnittstellen, um die Ungleichung aus Gleichung~\eqref{eq:cropbox} Punkt für Punkt anzuwenden. Der Node abonniert \texttt{/ouster/points} mit SensorDataQoS, lädt die Grenzen \texttt{min\_bound} und \texttt{max\_bound} sowie die Topics \texttt{input\_topic} und \texttt{output\_topic} und publiziert das Ergebnis auf \texttt{/points\_cropped}. Tabelle~\ref{tab:cropbox_params} fasst das Parameter-Set zusammen; der produktive Code unter \texttt{ouster\_cpp/src/crop\_box\_node.cpp} ist in Anhang~\ref{lst:cropbox_node} vollständig abgedruckt.
+Der \texttt{crop\_box\_node} wurde in C++ unter \ac{ROS}~2 umgesetzt und nutzt die \ac{PCL}-Schnittstellen, um die Ungleichung aus Gleichung~\eqref{eq:cropbox} Punkt für Punkt anzuwenden. Der Node abonniert \texttt{/ouster/points} mit SensorDataQoS, lädt die Grenzen \texttt{min\_bound} und \texttt{max\_bound} sowie die Topics \texttt{input\_topic} und \texttt{output\_topic} und publiziert das Ergebnis auf \texttt{/points\_cropped}. Tabelle~\ref{tab:cropbox_params} fasst das Parameter-Set zusammen; der produktive Code unter \texttt{ouster\_cpp/src/crop\_box\_node.cpp} ist in Anhang vollständig abgedruckt.
 
 \begin{verbatim}
 // Ausschnitt aus src/ouster_cpp/src/crop_box_node.cpp
@@ -66,8 +66,7 @@ ermöglicht den Vergleich verschiedener Parameterkombinationen.
 Das Testszenario „Kreuzung auf ebenem Boden“ ist gewählt, weil es sowohl freie Sichtflächen als auch klar
 begrenzte Hindernisse (Randbebauung, Bordsteine) bietet und damit typische urbanen Einsatzbedingungen
 repräsentiert, ohne dass Bodenunebenheiten die Filterbewertung verfälschen. In der finalen Konfiguration
-reduziert der Filter die Punktanzahl reproduzierbar um rund zwei Drittel, während der Zeitstempel im Header
-(vgl. Listing~\ref{lst:cropbox_node}, Zeilen 90ff.) sicherstellt, dass nachgelagerte Latenzmessungen den korrekten
+reduziert der Filter die Punktanzahl reproduzierbar um rund zwei Drittel, während der Zeitstempel im Header sicherstellt, dass nachgelagerte Latenzmessungen den korrekten
 Sendezeitpunkt erhalten.
 Da sich im Messbereich Gebäude und weitere störende Objekte befanden, welche die Anzahl falscher Detektionen signifikant erhöhen konnten, wurden die Grenzen des \texttt{crop\_box\_node} sukzessive angepasst. Durch iterative Parameteroptimierung ergaben sich folgende final verwendete Werte: \texttt{min\_bound = [-10.0, -6.0, -3.0]} sowie \texttt{max\_bound = [10.0, 6.0, 5.0]}.
 Physikalisch orientieren sich diese Grenzen an der Testumgebung: Mit \(\pm10\,\text{m}\)
@@ -95,7 +94,7 @@ während rechts nur der relevante Bereich nach Anwendung des CropBox-Filters zu 
 \section{VoxelGrid-Filter}
 \label{sec:voxelgrid}
 
-\subsection{Prinzip}
+\subsection{Prinzip}\label{subsec:prinzip}
 Der \textit{VoxelGrid-Filter} reduziert die Punktanzahl, indem der Raum in kubische Voxel der
 Kantenlänge $l=\texttt{voxel\_size}$ diskretisiert wird und pro Voxel nur ein repräsentativer Punkt
 (z.\,B. der erste oder ein Schwerpunkt) beibehalten wird. Dadurch sinken Datenrate und
@@ -164,6 +163,7 @@ sind in Tabelle~\ref{tab:voxel_params} zusammengefasst.
 \end{table}
 
 \subsection{Ergebnis}
+\label{subsec:ergebnis}
 
 Wie in Abbildung~\ref{fig:voxel_compare} dargestellt, führt die Anwendung des
 VoxelGrid-Filters zu einer gleichmäßigeren und deutlich reduzierten Punktdichte,
