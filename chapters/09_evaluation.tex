@@ -21,9 +21,12 @@ Die Messungen wurden in drei realen Szenarien durchgeführt:
     \item \textbf{S3 – Unebene Fahrbahn:} geneigte Fläche mit parkenden Fahrzeugen; bestätigt Robustheit der Bodensegmentierung und der Clusterbildung bei variierender Höhengeometrie.
 \end{itemize}
 
+Tabelle~\ref{tab:messaufzeichnungen} gibt einen Überblick über die verwendeten Messaufzeichnungen und deren Eigenschaften.
+
 \begin{table}[H]
   \centering
   \caption{Übersicht der verwendeten Messaufzeichnungen}
+  \label{tab:messaufzeichnungen}
   \begin{tabular}{|c|l|l|l|}
     \hline
     \textbf{Szenario} & \textbf{Beschreibung} & \textbf{Messaufzeichnung} & \textbf{Zeitraffer} \\ \hline
@@ -74,6 +77,8 @@ Die in Tabelle~\ref{tab:startwerte_parameter} aufgeführten Werte blieben währe
 
 \subsection{S1: Geparkte Fahrzeuge auf einer ebenen Fahrbahn}
 
+Für das Szenario der geparkten Fahrzeuge wurden zunächst die Auswirkungen der Voxelgröße untersucht. Tabelle~\ref{tab:geparkt_voxel} zeigt die Ergebnisse.
+
 \begin{table}[H]
 \centering
 \begin{tabular}{c|c|c|c|c|c}
@@ -92,6 +97,8 @@ Real & 15 & 0 & 1 & 3 & 19 \\
 \label{tab:geparkt_voxel}
 \end{table}
 
+Anschließend wurde der Einfluss des Schwellenwerts für die Bodensegmentierung analysiert, wie in Tabelle~\ref{tab:geparkt_distance} dargestellt.
+
 \begin{table}[H]
 \centering
 \begin{tabular}{c|c|c|c|c|c}
@@ -109,6 +116,8 @@ Real & 15 & 0 & 1 & 3 & 19 \\
 \caption{Detektionen pro Klasse für unterschiedliche distance\_threshold-Werte (Geparkte Autos, voxel\_size = 0.15\,m).}
 \label{tab:geparkt_distance}
 \end{table}
+
+Schließlich wurde die Cluster-Toleranz variiert. Die Ergebnisse sind in Tabelle~\ref{tab:geparkt_cluster_tolerance} aufgeführt.
 
 \begin{table}[H]
 \centering
@@ -132,6 +141,8 @@ Die Auswertungen für \textbf{S1} zeigen deutlich, wie sensibel die Verarbeitung
 
 \subsection{S2 – Kreuzung}
 
+Die Parameterstudie für die Kreuzungsszene untersucht die Auswirkungen verschiedener Voxelgrößen. Tabelle~\ref{tab:kreuzung_voxel_size} listet die Anzahl der Detektionen pro Klasse auf.
+
 \begin{table}[H]
   \centering
   \caption{Anzahl Detektionen pro Klasse für unterschiedliche Voxelgrößen (Kreuzung).}
@@ -150,6 +161,8 @@ Die Auswertungen für \textbf{S1} zeigen deutlich, wie sensibel die Verarbeitung
   \label{tab:kreuzung_voxel_size}
 \end{table}
 
+Der Einfluss des distance\_threshold-Parameters auf die Detektionsleistung in der Kreuzungsszene wird in Tabelle~\ref{tab:kreuzung_distance_threshold} dargestellt.
+
 \begin{table}[H]
   \centering
   \caption{Anzahl Detektionen pro Klasse für unterschiedliche \texttt{distance\_threshold}-Werte (Kreuzung, voxel\_size = 0.15\,m).}
@@ -158,15 +171,17 @@ Die Auswertungen für \textbf{S1} zeigen deutlich, wie sensibel die Verarbeitung
     \textbf{distance\_threshold (m)} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
     \hline
     0.10 & 15 & 12 & 1 & 1 & 29 \\
-    0.15 & 14 & 12 & 1 & 1 & 28 \\
-    0.20 & 14 &  9 & 1 & 1 & 25 \\
-    0.25 & 14 &  9 & 1 & 1 & 25 \\
+    0,15 & 14 & 12 & 1 & 1 & 28 \\
+    0,20 & 14 &  9 & 1 & 1 & 25 \\
+    0,25 & 14 &  9 & 1 & 1 & 25 \\
     \hline
     Real &  9 &  3 & 1 & 1 & 14 \\
     \hline
   \end{tabular}
   \label{tab:kreuzung_distance_threshold}
 \end{table}
+
+Die cluster\_tolerance-Werte und ihre Auswirkungen auf die Objekterkennung in der Kreuzungsszene sind in Tabelle~\ref{tab:kreuzung_cluster_tolerance} zusammengefasst.
 
 \begin{table}[H]
   \centering
@@ -175,10 +190,10 @@ Die Auswertungen für \textbf{S1} zeigen deutlich, wie sensibel die Verarbeitung
     \hline
     \textbf{cluster\_tolerance (m)} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
     \hline
-    0.30 &  8 &  8 & 4 & 1 & 21 \\
-    0.50 & 14 &  9 & 1 & 1 & 25 \\
-    0.70 & 17 &  8 & 1 & 1 & 27 \\
-    0.90 & 16 &  8 & 1 & 1 & 26 \\
+    0,30 &  8 &  8 & 4 & 1 & 21 \\
+    0,50 & 14 &  9 & 1 & 1 & 25 \\
+    0,70 & 17 &  8 & 1 & 1 & 27 \\
+    0,90 & 16 &  8 & 1 & 1 & 26 \\
     \hline
     Real &  9 &  3 & 1 & 1 & 14 \\
     \hline
@@ -190,55 +205,64 @@ Die Ergebnisse der Szene \textbf{S2~–~Kreuzung} zeigen, dass eine dichte und d
 
 \subsection{S3 – Unebene Fahrbahn}
 
+Auch für die unebene Fahrbahn wurde der Einfluss der Voxelgröße untersucht. Tabelle~\ref{tab:uneben_voxel} zeigt die Detektionsergebnisse.
+
 \begin{table}[H]
 \centering
+\caption{Anzahl Detektionen pro Klasse für verschiedene voxel\_size (Unebene Fläche).}
+\label{tab:uneben_voxel}
 \begin{tabular}{c|c|c|c|c|c}
 \hline
 \textbf{voxel\_size} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
 \hline
-0.10 & 15 & 7 & 3 & 0 & 25 \\
-0.15 & 15 & 7 & 2 & 1 & 25 \\
-0.20 & 15 & 1 & 2 & 1 & 19 \\
-0.25 & 16 & 0 & 2 & 1 & 19 \\
+0,10 & 15 & 7 & 3 & 0 & 25 \\
+0,15 & 15 & 7 & 2 & 1 & 25 \\
+0,20 & 15 & 1 & 2 & 1 & 19 \\
+0,25 & 16 & 0 & 2 & 1 & 19 \\
 \hline
 Real & 13 & 0 & 1 & 5 & 19 \\
 \hline
 \end{tabular}
-\caption{Anzahl Detektionen pro Klasse für verschiedene voxel\_size (Unebene Fläche).}
 \end{table}
+
+Tabelle~\ref{tab:uneben_distance} stellt die Ergebnisse für verschiedene Schwellenwerte der Bodensegmentierung auf unebener Fahrbahn dar.
 
 \begin{table}[H]
 \centering
+\caption{Anzahl Detektionen pro Klasse für verschiedene distance\_threshold (Unebene Fläche).}
+\label{tab:uneben_distance}
 \begin{tabular}{c|c|c|c|c|c}
 \hline
 \textbf{distance\_threshold} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
 \hline
-0.10 & 18 & 1 & 2 & 1 & 22 \\
-0.15 & 15 & 1 & 2 & 1 & 19 \\
-0.20 & 14 & 1 & 3 & 1 & 19 \\
-0.25 & 14 & 1 & 3 & 1 & 19 \\
+0,10 & 18 & 1 & 2 & 1 & 22 \\
+0,15 & 15 & 1 & 2 & 1 & 19 \\
+0,20 & 14 & 1 & 3 & 1 & 19 \\
+0,25 & 14 & 1 & 3 & 1 & 19 \\
 \hline
 Real & 13 & 0 & 1 & 5 & 19 \\
 \hline
 \end{tabular}
-\caption{Anzahl Detektionen pro Klasse für verschiedene distance\_threshold (Unebene Fläche).}
 \end{table}
+
+Abschließend zeigt Tabelle~\ref{tab:uneben_cluster} die Auswirkungen der Cluster-Toleranz in diesem Szenario.
 
 \begin{table}[H]
 \centering
+\caption{Anzahl Detektionen pro Klasse für verschiedene cluster\_tolerance (Unebene Fläche).}
+\label{tab:uneben_cluster}
 \begin{tabular}{c|c|c|c|c|c}
 \hline
 \textbf{cluster\_tolerance} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
 \hline
-0.30 & 16 & 3 & 5 & 1 & 25 \\
-0.50 & 16 & 1 & 2 & 1 & 20 \\
-0.70 & 17 & 1 & 1 & 2 & 21 \\
-0.90 & 13 & 1 & 0 & 2 & 16 \\
+0,30 & 16 & 3 & 5 & 1 & 25 \\
+0,50 & 16 & 1 & 2 & 1 & 20 \\
+0,70 & 17 & 1 & 1 & 2 & 21 \\
+0,90 & 13 & 1 & 0 & 2 & 16 \\
 \hline
 Real & 13 & 0 & 1 & 5 & 19 \\
 \hline
 \end{tabular}
-\caption{Anzahl Detektionen pro Klasse für verschiedene cluster\_tolerance (Unebene Fläche).}
 \end{table}
 
 Im Vergleich zu den ebenen Szenarien fällt auf, dass die geneigte Fahrbahn deutlich mehr Fehlalarme bei kleinen Objekten erzeugt. Schon bei \(\textit{voxel\_size} = 0{,}10\,\text{m}\) entstehen insgesamt 25 Detektionen, obwohl das Realbild nur 19 Objekte enthält; die Höhenvarianz verstärkt hier das Rauschen. Größere Voxel glätten die Punktwolke und reduzieren fälschliche Personen-Detektionen (von 7 auf 0), senken aber zugleich die Lkw-Erkennung, weil schräge Fahrzeugflanken in groben Voxeln zusammenfallen. Ähnlich zeigt das Bodensegment \(\textit{distance\_threshold}\), dass Werte oberhalb von \(0{,}15\,\text{m}\) die Gesamtzahl auf das Realniveau (19) stabilisieren, während zu kleine Schwellen (0{,}10\,\text{m}) Objekte in Bodenausreißer zerlegen. Bei der Clusterung trennt eine mittlere \(\textit{cluster\_tolerance}\) von \(0{,}50\,\text{m}\) die Fahrzeuge trotz Steigung am zuverlässigsten und vermeidet zugleich die Übersegmentierung, die bei \(0{,}30\,\text{m}\) zu fünf Fahrrad-Fehldetektionen führt. Insgesamt bestätigen die geneigten Szenen, dass moderat gewählte Parameter die Höhenstreuung abfangen und die Detektionszahlen nahe an den Realwerten halten, ohne relevante Objektstrukturen zu verlieren.
@@ -352,6 +376,8 @@ wodurch die typische Drehbewegung des rotierenden LiDAR-Bildes wahrnehmbar wird.
 Phänomen ist ein normales physikalisches Verhalten des Sensors und stellt keinen Fehler der
 Verarbeitungskette dar.
 
+Abbildung~\ref{fig:gerade_strecke_stand} zeigt das Szenario \enquote{Gerade Strecke, Stand} mit der Frontkameraansicht und der entsprechenden LiDAR-Punktwolke.
+
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.9\linewidth]{Bilder/gerade_strecke_stand.png}
@@ -456,12 +482,12 @@ Auch die Topic-Frequenzen zeigten ein stabiles Verhalten. Die Eingangsfrequenz d
 
 Insgesamt zeigt dieses Szenario, dass die Bodensegmentierung und die gesamte Verarbeitungskette auch bei Fahrbahnunebenheiten und im urbanen Umfeld robust und performant arbeiten. Weder die Latenzen noch die Datenraten weisen kritische Schwankungen auf, sodass die Anforderungen an eine stabile, echtzeitfähige Verarbeitung erfüllt werden.
 
-Die Abbildung zeigt die Robustheit der Verarbeitungskette bei realen Straßenprofilen und variierender Bodenhöhe.
+Abbildung~\ref{fig:urban_unebener_boden} zeigt die Robustheit der Verarbeitungskette bei realen Straßenprofilen und variierender Bodenhöhe. Das urbane Szenario mit unebenem Boden umfasst eine städtische Straße mit leicht unregelmäßiger Fahrbahnoberfläche, wobei die LiDAR-Visualisierung in RViz detektierte PKW-Clustern anzeigt.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{Bilder/urban_unebener_boden.png}
-    \caption{Urbanes Szenario mit unebenem Boden: Links die Fisheye-Kameraansicht einer städtischen Straße mit leicht unregelmäßiger Fahrbahnoberfläche; rechts die entsprechende LiDAR-Visualisierung in RViz mit detektierten PKW-Clustern.(2025-11-21-Messdaten/2025-11-21-VK-OL-007)}
+    \caption{Urbanes Szenario mit unebenem Boden: Fisheye-Kameraansicht und LiDAR-Visualisierung (2025-11-21-Messdaten/2025-11-21-VK-OL-007).}
     \label{fig:urban_unebener_boden}
 \end{figure}
 

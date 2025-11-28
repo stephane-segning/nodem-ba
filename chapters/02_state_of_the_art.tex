@@ -65,15 +65,17 @@ in Echtzeit ermöglicht (\cite{schuldt2020phd}).
 
 \section{Wellenlängenbereiche}
 \label{sec:wellenlaenge}
-Zur Umsetzung dieses Prinzips werden überwiegend Laser im nahen Infrarotbereich 
-(NIR) eingesetzt, typischerweise mit Wellenlängen zwischen $870\,\text{nm}$ und 
-$950\,\text{nm}$. Dieser Bereich ist besonders geeignet, da die spektrale 
-Strahlungsintensität des Sonnenlichts dort vergleichsweise gering ist und somit 
-ein günstiges Signal-Rausch-Verhältnis erzielt werden kann. Gleichzeitig stehen in diesem Wellenlängenbereich sowohl kosteneffiziente Halbleiterlaser als auch empfindliche Siliziumdetektoren zur Verfügung. Für spezielle Anwendungen werden 
-auch Wellenlängen um $1064\,\text{nm}$ oder $1550\,\text{nm}$ eingesetzt, da hier 
-höhere Laserleistungen innerhalb der Augensicherheitsgrenzen möglich sind. Diese 
-erfordern jedoch alternative Detektormaterialien, was den technischen Aufwand und 
+Zur Umsetzung dieses Prinzips werden überwiegend Laser im nahen Infrarotbereich
+(NIR) eingesetzt, typischerweise mit Wellenlängen zwischen $870\,\text{nm}$ und
+$950\,\text{nm}$. Dieser Bereich ist besonders geeignet, da die spektrale
+Strahlungsintensität des Sonnenlichts dort vergleichsweise gering ist und somit
+ein günstiges Signal-Rausch-Verhältnis erzielt werden kann. Gleichzeitig stehen in diesem Wellenlängenbereich sowohl kosteneffiziente Halbleiterlaser als auch empfindliche Siliziumdetektoren zur Verfügung. Für spezielle Anwendungen werden
+auch Wellenlängen um $1064\,\text{nm}$ oder $1550\,\text{nm}$ eingesetzt, da hier
+höhere Laserleistungen innerhalb der Augensicherheitsgrenzen möglich sind. Diese
+erfordern jedoch alternative Detektormaterialien, was den technischen Aufwand und
 die Kosten erhöht(\cite{beuth2021handbuch}).
+
+Abbildung~\ref{fig:spektrum} zeigt das Spektrum der elektromagnetischen Strahlung mit den für LiDAR-Systeme relevanten Wellenlängenbereichen.
 
 \begin{figure}[H]
     \centering
@@ -100,6 +102,8 @@ $c \approx 3 \cdot 10^{8}\,\text{m/s}$ ausbreitet, von einem Objekt reflektiert 
 
 Der Faktor $\tfrac{1}{2}$ berücksichtigt, dass der Lichtimpuls den Weg zweimal zurücklegt – vom Sender zum Objekt und wieder zurück zum Empfänger.
 
+Wie in Abbildung~\ref{fig:dtof} zu sehen, wird das dToF-Messprinzip durch die direkte Messung der Lichtlaufzeit realisiert.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{Bilder/Schematisches Beispiel eines direct ToF.png}
@@ -124,6 +128,8 @@ wobei $c$ die Lichtgeschwindigkeit bezeichnet.  Die maximale eindeutige Messdist
     d_\text{max} = \frac{c}{2 f_\mathrm{mod}}\,,
 \end{equation}
 so dass eine eindeutige Zuordnung der gemessenen Phasenverschiebung nur innerhalb dieser Entfernung möglich ist.  Höhere Modulationsfrequenzen verbessern zwar die Tiefenauflösung, verkürzen aber die eindeutige Reichweite proportional dazu \parencite{yi2023digital}.
+
+Abbildung~\ref{fig:amcw_schema} zeigt das schematische Prinzip eines amplitudenmodulierten LiDAR-Systems.
 
 \begin{figure}[H]
     \centering

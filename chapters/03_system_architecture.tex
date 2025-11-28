@@ -91,6 +91,8 @@ Nach erfolgreicher Initialisierung publiziert der Ouster~\ac{OS1} die Daten als 
 \paragraph{Weiterleitung im \ac{ROS}~2-Netzwerk}
 Der Embedded-PC leitet die Punktwolken über das interne \ac{ROS}~2-Netzwerk an den Laptop weiter. Dies erfolgt über eine DDS-basierte Publish/Subscribe-Kommunikation, deren \ac{QoS}-Einstellungen so gewählt wurden, dass die hohe Datenrate des \ac{OS1} zuverlässig transportiert werden kann (vgl. \cite{Wendel2025}). Auf dem Laptop können die Daten entweder direkt in \emph{RViz2} visualisiert oder über die entwickelte GUI weiterverarbeitet werden. Die Entkopplung von Embedded-PC (Datenerfassung) und Laptop (Analyse/Visualisierung) ermöglicht eine stabile Erfassung, selbst wenn die Visualisierung oder GUI zeitweise höhere Rechenlast erzeugt.
 
+Abbildung~\ref{fig:messkette_sensordaten} zeigt den schematischen Aufbau der Datenerfassungskette mit dem Ouster~\ac{OS1}-\ac{LiDAR}.
+
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.85\textwidth]{Bilder/messkette_sensordaten.png}

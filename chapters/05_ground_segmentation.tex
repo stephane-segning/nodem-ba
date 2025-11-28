@@ -297,7 +297,7 @@ Die wesentlichen Laufzeitparameter werden als \ac{ROS}-Parameter deklariert und 
 \textbf{Parameter} & \textbf{Default} & \textbf{Bedeutung} \\ \hline
 \texttt{input\_topic} & \texttt{/points\_voxel} & Eingangs-Punktwolke (vorsegmentiert per VoxelGrid) \\ \hline
 \texttt{output\_topic} & \texttt{/obstacle\_points} & Ausgabe ohne Bodenpunkte \\ \hline
-\texttt{distance\_threshold} & $0{,}15\,\mathrm{m}$ & maximaler Punkt-zu-Ebene-Abstand für Inlier \\ \hline
+\texttt{distance\_threshold} & \SI{0,15}{\meter} & maximaler Punkt-zu-Ebene-Abstand für Inlier \\ \hline
 \texttt{max\_iterations} & $1000$ & maximale \ac{RANSAC}-Iterationen \\ \hline
 \end{tabular}
 \caption{\ac{RANSAC}-Parametrisierung des \texttt{ransac\_ground\_node}.}
