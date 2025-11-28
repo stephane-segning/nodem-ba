@@ -6,7 +6,7 @@ Dieses Kapitel zeichnet die technische Systemarchitektur der \ac{LiDAR}-basierte
 \section{Systemübersicht}
 \subsection{Anforderungen an den Algorithmus}
 
-Die Punktwolken des Ouster~\ac{OS1} bilden die Ausgangsbasis einer durchgängigen Verarbeitungskette, die Bodenpunkte unterdrückt, Objekte als Cluster mit Bounding-Boxen herausarbeitet und deren Bewegung verfolgt. Die hohe Winkelauflösung des Sensors liefert dafür detaillierte Geometrien \parencite{OusterOS1}; zugleich verlangt sie nach einer stabilen Vorverarbeitung, die Ausreißer und Rauschen entfernt, die Punktdichte gezielt reduziert und trotzdem genügend Struktur für verlässliche Objektgrenzen erhält. Dieses Vorgehen folgt etablierten Empfehlungen der Fahrzeugautomatisierungs-Literatur: Deterministische Filterung und kontrollierte Latenz erhöhen die funktionale Sicherheit \parencite{Arnold2019Survey,Macenski2022ROS2}, während eine konsequente Bodenentfernung die Falsch-Positiv-Rate reduziert und das Clustering präziser macht \parencite{gomes2023survey}. Konfigurierbare Parameter stellen sicher, dass die gleiche Verarbeitungskette sowohl in engen urbanen Szenen als auch auf offenen Flächen oder geneigten Fahrbahnen zuverlässig arbeitet.
+Die Punktwolken des Ouster OS1 bilden die Ausgangsbasis einer durchgängigen Verarbeitungskette, die Bodenpunkte unterdrückt, Objekte als Cluster mit Bounding-Boxen herausarbeitet und deren Bewegung verfolgt. Die hohe Winkelauflösung des Sensors liefert dafür detaillierte Geometrien \parencite{OusterOS1}; zugleich verlangt sie nach einer stabilen Vorverarbeitung, die Ausreißer und Rauschen entfernt, die Punktdichte gezielt reduziert und trotzdem genügend Struktur für verlässliche Objektgrenzen erhält. Dieses Vorgehen folgt etablierten Empfehlungen der Fahrzeugautomatisierungs-Literatur: Deterministische Filterung und kontrollierte Latenz erhöhen die funktionale Sicherheit \parencite{Arnold2019Survey,Macenski2022ROS2}, während eine konsequente Bodenentfernung die Falsch-Positiv-Rate reduziert und das Clustering präziser macht \parencite{gomes2023survey}. Konfigurierbare Parameter stellen sicher, dass die gleiche Verarbeitungskette sowohl in engen urbanen Szenen als auch auf offenen Flächen oder geneigten Fahrbahnen zuverlässig arbeitet.
 
 Die Hardware- und Softwareanforderungen bauen auf dieser Pipeline auf: Ziel ist eine End-to-End-Latenz von unter \(100\,\text{ms}\) bei \(10\,\text{Hz}\) mit moderatem Verbrauch von CPU- und RAM-Ressourcen. Alle \ac{ROS}~2-Nachrichten sind klar dokumentiert, und die Ausgaben lassen sich maschinell weiterverarbeiten oder im Terminal lesen. Die Zielplattform sind mobile Rechner oder Embedded-PCs mit mindestens sechs CPU-Kernen (\(\geq 2{,}5\,\text{GHz}\)) und \(\geq 16\,\text{GB}\) RAM, ohne spezialisierte GPU-Anforderungen. Die Integration in die GUI von \emph{Carception~X} \parencite{IFZN_Projekte} stellt sicher, dass alle Betriebsmodi (Sensor, Sensor + PC, Sensor + PC + Embedded PC) unterstützt werden \parencite{Wendel2025}.
 
@@ -22,7 +22,7 @@ Die detaillierten Anforderungen und dazugehörigen Messkriterien sind in Tabelle
 \hline
 
 1 &
-\ac{OS1}-Punktwolken werden empfangen &
+OS1-Punktwolken werden empfangen &
 Topic \texttt{/ouster/points}; Rate $\geq 10$ Hz, Paketverlust $<1\,\%$ \\[0.15cm]
 \hline
 
@@ -80,23 +80,23 @@ Darstellung von Rohdaten, Bodenfilter, Clustern und Tracks in RViz2/GUI mit $\ge
 \subsection{Datenerfassung}
 \label{chap:datenerfassung}
 
-Die Datenerfassung umfasst sämtliche Schritte von der Initialisierung des Ouster~\ac{OS1} über die Netzwerkkommunikation bis hin zur Bereitstellung der Punktwolken innerhalb des \ac{ROS}~2-Systems. Der grundlegende Aufbau orientiert sich an der Messkette nach \cite{Wendel2025}. 
+Die Datenerfassung umfasst sämtliche Schritte von der Initialisierung des Ouster OS1 über die Netzwerkkommunikation bis hin zur Bereitstellung der Punktwolken innerhalb des \ac{ROS}~2-Systems. Der grundlegende Aufbau orientiert sich an der Messkette nach \cite{Wendel2025}. 
 
 \paragraph{Netzwerkarchitektur und Übertragungspfad}
-Der Ouster~\ac{OS1} wird über eine dedizierte Ethernetverbindung mit dem Embedded-PC dSPACE MAB~III verbunden. Da der Embedded-PC nur begrenzte Schnittstellen besitzt (vgl. \cite{Wendel2025}), erfolgt die physische Anbindung über einen USB-A-auf-Ethernet-Adapter des Typs \emph{Renkforce RF-4708614}. Dieser unterstützt Datenraten bis \(1\,\text{Gbit/s}\) und stellt damit sicher, dass die maximal mögliche Netto-Datenrate des \ac{LiDAR}-Sensors zuverlässig übertragen werden kann (vgl. \cite{conrad2025}). Die Netzwerkkommunikation arbeitet in einem isolierten Subnetz, in dem nur Embedded-PC und Sensor verbunden sind. Dies minimiert Latenzen und verhindert Paketverlust durch konkurrierende Netzwerkdienste.
+Der Ouster OS1 wird über eine dedizierte Ethernetverbindung mit dem Embedded-PC dSPACE MAB~III verbunden. Da der Embedded-PC nur begrenzte Schnittstellen besitzt (vgl. \cite{Wendel2025}), erfolgt die physische Anbindung über einen USB-A-auf-Ethernet-Adapter des Typs \emph{Renkforce RF-4708614}. Dieser unterstützt Datenraten bis \(1\,\text{Gbit/s}\) und stellt damit sicher, dass die maximal mögliche Netto-Datenrate des \ac{LiDAR}-Sensors zuverlässig übertragen werden kann (vgl. \cite{conrad2025}). Die Netzwerkkommunikation arbeitet in einem isolierten Subnetz, in dem nur Embedded-PC und Sensor verbunden sind. Dies minimiert Latenzen und verhindert Paketverlust durch konkurrierende Netzwerkdienste.
 
 \paragraph{Publikation der Sensordaten}
-Nach erfolgreicher Initialisierung publiziert der Ouster~\ac{OS1} die Daten als \ac{ROS}~2-Nachrichten des Typs \texttt{sensor\_msgs/PointCloud2} auf dem Topic \texttt{/ouster/points}. Die Punktwolke enthält für jeden Messpunkt kartesische Koordinaten \((x,y,z)\), die Intensität der rückgestreuten Strahlung sowie den Ring-Index des Laserkanals. Der Zeitstempel wird direkt in der Firmware generiert und ermöglicht eine präzise Synchronisation mit späteren Verarbeitungsschritten. Durch die feste Schichtstruktur (Ringe) der \ac{OS1}-Architektur bleibt die vertikale Struktur der Punktwolke konsistent, was insbesondere für die spätere Bodenextraktion und Clusterbildung essenziell ist.
+Nach erfolgreicher Initialisierung publiziert der Ouster OS1 die Daten als \ac{ROS}~2-Nachrichten des Typs \texttt{sensor\_msgs/PointCloud2} auf dem Topic \texttt{/ouster/points}. Die Punktwolke enthält für jeden Messpunkt kartesische Koordinaten \((x,y,z)\), die Intensität der rückgestreuten Strahlung sowie den Ring-Index des Laserkanals. Der Zeitstempel wird direkt in der Firmware generiert und ermöglicht eine präzise Synchronisation mit späteren Verarbeitungsschritten. Durch die feste Schichtstruktur (Ringe) der OS1-Architektur bleibt die vertikale Struktur der Punktwolke konsistent, was insbesondere für die spätere Bodenextraktion und Clusterbildung essenziell ist.
 
 \paragraph{Weiterleitung im \ac{ROS}~2-Netzwerk}
-Der Embedded-PC leitet die Punktwolken über das interne \ac{ROS}~2-Netzwerk an den Laptop weiter. Dies erfolgt über eine DDS-basierte Publish/Subscribe-Kommunikation, deren \ac{QoS}-Einstellungen so gewählt wurden, dass die hohe Datenrate des \ac{OS1} zuverlässig transportiert werden kann (vgl. \cite{Wendel2025}). Auf dem Laptop können die Daten entweder direkt in \emph{RViz2} visualisiert oder über die entwickelte GUI weiterverarbeitet werden. Die Entkopplung von Embedded-PC (Datenerfassung) und Laptop (Analyse/Visualisierung) ermöglicht eine stabile Erfassung, selbst wenn die Visualisierung oder GUI zeitweise höhere Rechenlast erzeugt.
+Der Embedded-PC leitet die Punktwolken über das interne \ac{ROS}~2-Netzwerk an den Laptop weiter. Dies erfolgt über eine DDS-basierte Publish/Subscribe-Kommunikation, deren \ac{QoS}-Einstellungen so gewählt wurden, dass die hohe Datenrate des OS1 zuverlässig transportiert werden kann (vgl. \cite{Wendel2025}). Auf dem Laptop können die Daten entweder direkt in \emph{RViz2} visualisiert oder über die entwickelte GUI weiterverarbeitet werden. Die Entkopplung von Embedded-PC (Datenerfassung) und Laptop (Analyse/Visualisierung) ermöglicht eine stabile Erfassung, selbst wenn die Visualisierung oder GUI zeitweise höhere Rechenlast erzeugt.
 
-Abbildung~\ref{fig:messkette_sensordaten} zeigt den schematischen Aufbau der Datenerfassungskette mit dem Ouster~\ac{OS1}-\ac{LiDAR}.
+Abbildung~\ref{fig:messkette_sensordaten} zeigt den schematischen Aufbau der Datenerfassungskette mit dem Ouster OS1-\ac{LiDAR}.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.85\textwidth]{Bilder/messkette_sensordaten.png}
-  \caption{Aufbau der Datenerfassung mit dem Ouster~\ac{OS1}-\ac{LiDAR} \cite{Wendel2025}).}
+  \caption{Aufbau der Datenerfassung mit dem Ouster OS1-\ac{LiDAR} \cite{Wendel2025}).}
   \label{fig:messkette_sensordaten}
 \end{figure}
 
@@ -292,7 +292,7 @@ sort\_tracker\_node & Pub & \texttt{/tracks\_markers} & MarkerArray     & rclcpp
 
 \section{Datenrepräsentation und Bibliotheken}
 \subsection{\texttt{sensor\_msgs/PointCloud2}: Felder, Koordinaten und Layout}
-Ouster~\ac{OS1}-Daten werden als \texttt{sensor\_msgs/PointCloud2} publiziert. Tabelle~\ref{tab:pointcloud2-fields} fasst die wichtigsten Felder und deren Semantik zusammen; die konkreten Datentypen (z.\,B. \texttt{float32} oder \texttt{uint16}) hängen von Treiber- und Konfiguration ab.
+Ouster OS1-Daten werden als \texttt{sensor\_msgs/PointCloud2} publiziert. Tabelle~\ref{tab:pointcloud2-fields} fasst die wichtigsten Felder und deren Semantik zusammen; die konkreten Datentypen (z.\,B. \texttt{float32} oder \texttt{uint16}) hängen von Treiber- und Konfiguration ab.
 
 \begin{table}[H]
   \centering
@@ -312,14 +312,14 @@ Ouster~\ac{OS1}-Daten werden als \texttt{sensor\_msgs/PointCloud2} publiziert. T
     Reflektierte Signalstärke (\texttt{uint16}); abhängig von Sensorkalibrierung und daher nur innerhalb eines Scans vergleichbar. \\ \hline
 
     \texttt{ring} &
-    Vertikaler Kanalindex (Laser/Detektor). Beim \ac{OS1}-64: 64 Ringe von 0 (unten) bis 63 (oben). \\ \hline
+    Vertikaler Kanalindex (Laser/Detektor). Beim OS1-64: 64 Ringe von 0 (unten) bis 63 (oben). \\ \hline
 
     \texttt{time} &
     Zeitversatz eines Punktes relativ zu \texttt{header.stamp} (s); wichtig für Motion Compensation innerhalb eines Scans. \\ \hline
 
   \end{tabular}
 
-  \caption{Zentrale Felder von \texttt{sensor\_msgs/PointCloud2} für den Ouster~\ac{OS1}.}
+  \caption{Zentrale Felder von \texttt{sensor\_msgs/PointCloud2} für den Ouster OS1.}
   \label{tab:pointcloud2-fields}
 \end{table}
 

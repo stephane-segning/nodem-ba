@@ -293,17 +293,17 @@ Typische Regeln umfassen:
 \end{itemize}
 Dies verhindert spontane Fehldetektionen und stabilisiert die Szeneinterpretation.
 
-\section{Ouster \ac{OS1} am Opel Astra der TH Nürnberg}
+\section{Ouster OS1 am Opel Astra der TH Nürnberg}
 
-\subsection{Spezifische Eigenschaften des Ouster \ac{OS1}}
+\subsection{Spezifische Eigenschaften des Ouster OS1}
 \label{sec:eigenschaften}
 
-Der \emph{Ouster \ac{OS1}} (vgl. Abbildung~\ref{fig:ouster_os1}) ist ein rotationssymmetrischer 360°-\ac{LiDAR}, der eine hochauflösende dreidimensionale Erfassung der Umgebung ermöglicht. Die im Projekt verwendete Variante verfügt über eine vertikale Auflösung von 128 Kanälen. In der maximalen Konfiguration erreicht der Sensor eine horizontale Auflösung von 2{,}048 Abtastungen pro Umdrehung, was zu einer Punktwolke mit bis zu 262\,144 Messpunkten pro Scan führt.
+Der \emph{Ouster OS1} (vgl. Abbildung~\ref{fig:ouster_os1}) ist ein rotationssymmetrischer 360°-\ac{LiDAR}, der eine hochauflösende dreidimensionale Erfassung der Umgebung ermöglicht. Die im Projekt verwendete Variante verfügt über eine vertikale Auflösung von 128 Kanälen. In der maximalen Konfiguration erreicht der Sensor eine horizontale Auflösung von 2{,}048 Abtastungen pro Umdrehung, was zu einer Punktwolke mit bis zu 262\,144 Messpunkten pro Scan führt.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.6\textwidth]{Bilder/Ouster.png}
-    \caption{Ouster \ac{OS1} \parencite{sensalyticsRetailAnalytics}}
+    \caption{Ouster OS1 \parencite{sensalyticsRetailAnalytics}}
     \label{fig:ouster_os1}
 \end{figure}
 
@@ -318,7 +318,7 @@ Weitere technische Details zur Integration und Konfiguration des Sensors sind au
     \begin{tabular}{p{0.35\textwidth}p{0.55\textwidth}}
         \hline
         \textbf{Hersteller:}              & Ouster Inc. \\ 
-        \textbf{Gerätebezeichnung:}       & \ac{OS1} Mid-Range Imaging \ac{LiDAR} \\ 
+        \textbf{Gerätebezeichnung:}       & OS1 Mid-Range Imaging \ac{LiDAR} \\ 
         \textbf{Gewicht:}                 & ca.\ 0{,}50 kg (mit Gehäusekappe) \\ 
         \textbf{Abmaße (Ø x H):}          & 87 mm $\times$ 74{,}2 mm \\ 
         \textbf{Wellenlänge Laser:}       & 865 nm \\ 
@@ -338,26 +338,26 @@ Weitere technische Details zur Integration und Konfiguration des Sensors sind au
         \textbf{Datenschnittstelle:}      & UDP über Gigabit-Ethernet (1000BASE-T / 1000BASE-T1) \\ 
         \hline
     \end{tabular}
-    \caption{Spezifikationen \ac{LiDAR}-Sensor \emph{Ouster \ac{OS1}}}
+    \caption{Spezifikationen \ac{LiDAR}-Sensor \emph{Ouster OS1}}
 \end{table}
 
 
 \subsection{Sensorpositionierung am Opel Astra}
-Der im Rahmen dieser Arbeit verwendete Ouster~\ac{OS1} ist auf dem Versuchsträger Opel Astra des Instituts montiert. Der Sensor, laut \textcite{Sagdic2025}, wurde mittig auf einer Trägerstruktur über der Fahrzeugdachkante positioniert. Diese erhöhte Montage ermöglicht ein möglichst großes 360°-Sichtfeld ohne Abschattungen durch Fahrzeugkarosserie oder Anbauteile. Die Ausrichtung des Sensors gewährleistet, dass sowohl Bereiche vor dem Fahrzeug als auch seitliche und rückwärtige Zonen erfasst werden, was für die spätere Bodenfilterung, Clusterbildung und Objektverfolgung essenziell ist. Die Abbildung~\ref{fig:sensorposition_astra} zeigt die Montageposition auf dem Fahrzeug im Labor des IFZN mit Abmessungen.
+Der im Rahmen dieser Arbeit verwendete Ouster OS1 ist auf dem Versuchsträger Opel Astra des Instituts montiert. Der Sensor, laut \textcite{Sagdic2025}, wurde mittig auf einer Trägerstruktur über der Fahrzeugdachkante positioniert. Diese erhöhte Montage ermöglicht ein möglichst großes 360°-Sichtfeld ohne Abschattungen durch Fahrzeugkarosserie oder Anbauteile. Die Ausrichtung des Sensors gewährleistet, dass sowohl Bereiche vor dem Fahrzeug als auch seitliche und rückwärtige Zonen erfasst werden, was für die spätere Bodenfilterung, Clusterbildung und Objektverfolgung essenziell ist. Die Abbildung~\ref{fig:sensorposition_astra} zeigt die Montageposition auf dem Fahrzeug im Labor des IFZN mit Abmessungen.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.83\textwidth]{Bilder/sensorposition_astra.png}
-    \caption{Montageposition des Ouster~\ac{OS1} auf dem Opel Astra mit Abmessungen (\textcite{Wendel2025}).}
+    \caption{Montageposition des Ouster OS1 auf dem Opel Astra mit Abmessungen (\textcite{Wendel2025}).}
     \label{fig:sensorposition_astra}
 \end{figure}
 
-Abbildung~\ref{fig:position_sensor} veranschaulicht den Versuchsträger Opel Astra sowie die auf der Trägerstruktur montierte Position des Ouster~\ac{OS1}.
+Abbildung~\ref{fig:position_sensor} veranschaulicht den Versuchsträger Opel Astra sowie die auf der Trägerstruktur montierte Position des Ouster OS1.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.83\textwidth]{Bilder/position_sensor.png}
-    \caption{Montageposition des Ouster~\ac{OS1} auf dem Opel Astra}
+    \caption{Montageposition des Ouster OS1 auf dem Opel Astra}
     \label{fig:position_sensor}
 \end{figure}
 

@@ -1,7 +1,7 @@
 \chapter{Integration in der GUI}
 \label{chap:integration_gui}
 
-Dieses Kapitel beschreibt die Einbindung der \ac{LiDAR}-Verarbeitungskette in die bestehende IFZN-GUI. Es fasst die vorhandenen Funktionen zusammen, leitet die notwendigen Erweiterungen für den Ouster~\ac{OS1} ab, dokumentiert Anpassungen an Startskripten und Namespaces und diskutiert beobachtete Einschränkungen sowie Verbesserungsvorschläge für die zukünftige Bedienlogik.
+Dieses Kapitel beschreibt die Einbindung der \ac{LiDAR}-Verarbeitungskette in die bestehende IFZN-GUI. Es fasst die vorhandenen Funktionen zusammen, leitet die notwendigen Erweiterungen für den Ouster OS1 ab, dokumentiert Anpassungen an Startskripten und Namespaces und diskutiert beobachtete Einschränkungen sowie Verbesserungsvorschläge für die zukünftige Bedienlogik.
 
 \section{Anforderungen: Bestehende Funktionen und notwendige Erweiterungen}
 
@@ -15,7 +15,7 @@ Die bestehende IFZN-GUI folgt der modularen und erweiterbaren Architektur nach W
     \item eine automatisierte Startlogik über MATLAB und \texttt{tmux} für bestehende Sensorketten.
 \end{itemize}
 
-Diese Infrastruktur bildet die Grundlage für die Integration des Ouster~\ac{OS1} und kann ohne Bruch der bisherigen Bedienphilosophie erweitert werden. Für eine vollständige Einbindung sind jedoch noch zusätzliche Bausteine nötig, die im ursprünglichen Umfang nicht vorgesehen waren:
+Diese Infrastruktur bildet die Grundlage für die Integration des Ouster OS1 und kann ohne Bruch der bisherigen Bedienphilosophie erweitert werden. Für eine vollständige Einbindung sind jedoch noch zusätzliche Bausteine nötig, die im ursprünglichen Umfang nicht vorgesehen waren:
 
 \begin{enumerate}
     \item \textbf{Einbindung des Ouster-Treibers:}  
