@@ -1,0 +1,383 @@
+\chapter{Systemarchitektur}
+\label{chap:systemarchitektur}
+
+Dieses Kapitel zeichnet die technische Systemarchitektur der \ac{LiDAR}-basierten Umfelderkennung nach. Dazu werden zunächst alle Software- und Hardwarekomponenten in eine durchgängige \ac{ROS}~2-Verarbeitungskette eingeordnet. Anschließend folgen die eingesetzten Frameworks und Bibliotheken, die Arbeitsumgebung inklusive Datenaufnahme und -verarbeitung, die Deployment-Strategie der Nodes sowie die Bewertungsmetriken, mit denen die Verarbeitungskette in den folgenden Kapiteln überprüft wird.
+
+\section{Systemübersicht}
+\subsection{Anforderungen an den Algorithmus}
+
+Die Punktwolken des Ouster~\ac{OS1} bilden die Ausgangsbasis einer durchgängigen Verarbeitungskette, die Bodenpunkte unterdrückt, Objekte als Cluster mit Bounding-Boxen herausarbeitet und deren Bewegung verfolgt. Die hohe Winkelauflösung des Sensors liefert dafür detaillierte Geometrien \parencite{OusterOS1}; zugleich verlangt sie nach einer stabilen Vorverarbeitung, die Ausreißer und Rauschen entfernt, die Punktdichte gezielt reduziert und trotzdem genügend Struktur für verlässliche Objektgrenzen erhält. Dieses Vorgehen folgt etablierten Empfehlungen der Fahrzeugautomatisierungs-Literatur: Deterministische Filterung und kontrollierte Latenz erhöhen die funktionale Sicherheit \parencite{Arnold2019Survey,Macenski2022ROS2}, während eine konsequente Bodenentfernung die Falsch-Positiv-Rate reduziert und das Clustering präziser macht \parencite{gomes2023survey}. Konfigurierbare Parameter stellen sicher, dass die gleiche Pipeline sowohl in engen urbanen Szenen als auch auf offenen Flächen oder geneigten Fahrbahnen zuverlässig arbeitet.
+
+Die Hardware- und Softwareanforderungen bauen auf dieser Pipeline auf: Ziel ist eine End-to-End-Latenz von unter \(100\,\text{ms}\) bei \(10\,\text{Hz}\) mit moderatem Verbrauch von CPU- und RAM-Ressourcen. Alle \ac{ROS}~2-Nachrichten sind klar dokumentiert, und die Ausgaben lassen sich maschinell weiterverarbeiten oder im Terminal lesen. Die Zielplattform sind mobile Rechner oder Embedded-PCs mit mindestens sechs CPU-Kernen (\(\geq 2{,}5\,\text{GHz}\)) und \(\geq 16\,\text{GB}\) RAM, ohne spezialisierte GPU-Anforderungen. Die Integration in die GUI von \emph{Carception~X} \parencite{IFZN_Projekte} stellt sicher, dass alle Betriebsmodi (Sensor, Sensor + PC, Sensor + PC + Embedded PC) unterstützt werden \parencite{Wendel2025}.
+
+Die Leistungsbewertung nutzt klar definierte Kriterien: Der Restbodenanteil soll je Rasterzelle (\(2\,\text{m}\) \(\times\) \(2\,\text{m}\)) unter \(5\,\%\) bleiben, während tragende Objektpunkte im Frontbereich (\(30\,\text{m}\)) höchstens um \(10\,\%\) reduziert werden dürfen. Ein Downsampling gilt als verlustarm, wenn mindestens \(70\,\%\) der Ausgangsdichte in einem \(3\,\text{m}\)\(\times\) \(3\,\text{m}\)-Gitter erhalten bleibt und Bounding-Box-Kanten höchstens um \(0{,}1\,\text{m}\) vom Referenzwert abweichen. Laufzeitparameter wie Voxelgröße, \ac{RANSAC}-Abstandsgrenze und Iterationszahl, Cluster-Toleranz sowie Minimal- und Maximalpunktzahlen werden über Launch-Dateien oder \texttt{ros2 param set} ohne Neustart angepasst. Eine Echtzeitvisualisierung in RViz2 oder der GUI macht Rohdaten, Bodenfilter, Cluster und Tracks bei mindestens \(10\,\text{\ac{FPS}}\) sichtbar.
+
+Die detaillierten Anforderungen und dazugehörigen Messkriterien sind in Tabelle~\ref{tab:anforderungen_messkette} zusammengefasst.
+
+  \begin{table}[H]
+    \centering
+\begin{tabularx}{\textwidth}{|c|X|X|}
+\hline
+\textbf{Nr.} & \textbf{Anforderung} & \textbf{Messkriterium} \\
+\hline
+
+1 &
+\ac{OS1}-Punktwolken werden empfangen &
+Topic \texttt{/ouster/points}; Rate $\geq 10$ Hz, Paketverlust $<1\,\%$ \\[0.15cm]
+\hline
+
+2 &
+Objektliste mit Pose und Abmessungen &
+Aktualisierungsrate $\geq 10$ Hz; Track-IDs konsistent über $\geq 5$ Frames \\[0.15cm]
+\hline
+
+3 &
+Bodenpunkte und Störsignale entfernen &
+Restbodenanteil $<5\,\%$ je $2\,\text{m}$-Raster; Verlust tragender Objektpunkte $<10\,\%$ im Frontbereich \\[0.15cm]
+\hline
+
+4 &
+Reduzierte Punktdichte ohne wesentlichen Geometrieverlust &
+Voxelgröße 5--10 cm; Punktdichte $\geq70\,\%$ im $3\,\text{m}$-Gitter; Kantenabweichung $<0{,}1$ m \\[0.15cm]
+\hline
+
+5 &
+Laufzeitparameter anpassbar &
+Voxelgröße, \ac{RANSAC}-Abstand/Iterationen, Cluster-Toleranz und Clustergrößen via Launch oder \texttt{ros2 param set} ohne Neustart \\[0.15cm]
+\hline
+
+6 &
+End-to-End-Latenz <100 ms bei 10 Hz &
+Zeitstempel-Differenz Ein-/Ausgang; stabile 10 Hz \\[0.15cm]
+\hline
+
+7 &
+Stabiler Betrieb auf Standardhardware &
+CPU/RAM-Auslastung $\leq 60\,\%$ auf 6-Kern-CPU (\(\geq 2{,}5\,\text{GHz}\), \(\geq 16\,\text{GB}\) RAM) bei stabilen $10\,\mathrm{Hz}$ \\[0.15cm]
+\hline
+
+8 &
+Maschinen- und terminallesbare Ausgabe &
+\ac{ROS}-Themen mit dokumentierten Typen (\texttt{sensor\_msgs/PointCloud2}, \texttt{vision\_msgs/Detection3DArray}); Konsolenstatus $\leq 1$ Zeile/s \\[0.15cm]
+\hline
+
+9 &
+Integration in bestehende GUI &
+Algorithmus ausführbar bei den Moden Sensor, Sensor + PC, Sensor + PC + Embedded PC \\[0.05cm]
+\hline
+
+10 &
+Echtzeitvisualisierung &
+Darstellung von Rohdaten, Bodenfilter, Clustern und Tracks in RViz2/GUI mit $\geq 10\,\text{\ac{FPS}}$ \\[0.05cm]
+\hline
+
+\end{tabularx}
+\caption{Anforderungen an die Verarbeitungsstrecke mit zugehörigen Messkriterien}
+\label{tab:anforderungen_messkette}
+\end{table}
+
+
+\subsection{Datenerfassung}
+\label{chap:datenerfassung}
+
+Die Datenerfassung umfasst sämtliche Schritte von der Initialisierung des Ouster~\ac{OS1} über die Netzwerkkommunikation bis hin zur Bereitstellung der Punktwolken innerhalb des \ac{ROS}~2-Systems. Der grundlegende Aufbau orientiert sich an der Messkette nach \cite{Wendel2025}. 
+
+\paragraph{Netzwerkarchitektur und Übertragungspfad}
+Der Ouster~\ac{OS1} wird über eine dedizierte Ethernetverbindung mit dem Embedded-PC dSPACE MAB~III verbunden. Da der Embedded-PC nur begrenzte Schnittstellen besitzt (vgl. \cite{Wendel2025}), erfolgt die physische Anbindung über einen USB-A-auf-Ethernet-Adapter des Typs \emph{Renkforce RF-4708614}. Dieser unterstützt Datenraten bis \(1\,\text{Gbit/s}\) und stellt damit sicher, dass die maximal mögliche Netto-Datenrate des \ac{LiDAR}-Sensors zuverlässig übertragen werden kann (vgl. \cite{conrad2025}). Die Netzwerkkommunikation arbeitet in einem isolierten Subnetz, in dem nur Embedded-PC und Sensor verbunden sind. Dies minimiert Latenzen und verhindert Paketverlust durch konkurrierende Netzwerkdienste.
+
+\paragraph{Publikation der Sensordaten}
+Nach erfolgreicher Initialisierung publiziert der Ouster~\ac{OS1} die Daten als \ac{ROS}~2-Nachrichten des Typs \texttt{sensor\_msgs/PointCloud2} auf dem Topic \texttt{/ouster/points}. Die Punktwolke enthält für jeden Messpunkt kartesische Koordinaten \((x,y,z)\), die Intensität der rückgestreuten Strahlung sowie den Ring-Index des Laserkanals. Der Zeitstempel wird direkt in der Firmware generiert und ermöglicht eine präzise Synchronisation mit späteren Verarbeitungsschritten. Durch die feste Schichtstruktur (Ringe) der \ac{OS1}-Architektur bleibt die vertikale Struktur der Punktwolke konsistent, was insbesondere für die spätere Bodenextraktion und Clusterbildung essenziell ist.
+
+\paragraph{Weiterleitung im \ac{ROS}~2-Netzwerk}
+Der Embedded-PC leitet die Punktwolken über das interne \ac{ROS}~2-Netzwerk an den Laptop weiter. Dies erfolgt über eine DDS-basierte Publish/Subscribe-Kommunikation, deren \ac{QoS}-Einstellungen so gewählt wurden, dass die hohe Datenrate des \ac{OS1} zuverlässig transportiert werden kann (vgl. \cite{Wendel2025}). Auf dem Laptop können die Daten entweder direkt in \emph{RViz2} visualisiert oder über die entwickelte GUI weiterverarbeitet werden. Die Entkopplung von Embedded-PC (Datenerfassung) und Laptop (Analyse/Visualisierung) ermöglicht eine stabile Erfassung, selbst wenn die Visualisierung oder GUI zeitweise höhere Rechenlast erzeugt.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{Bilder/messkette_sensordaten.png}
+  \caption{Aufbau der Datenerfassung mit dem Ouster~\ac{OS1}-\ac{LiDAR} \cite{Wendel2025}).}
+  \label{fig:messkette_sensordaten}
+\end{figure}
+
+\subsection{Umsetzung}
+Abbildung~\ref{fig:ros2-verarbeitungskette-alltopics} zeigt die \ac{ROS}~2-Verarbeitungskette von der Aufnahme über Vorverarbeitung, Bodensegmentierung und Cluster/Bounding-Boxes bis zur Objektverfolgung. Jeder Knoten hat klar definierte Ein-/Ausgänge und Topics.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=2.2cm,
+    process/.style={rectangle, rounded corners, draw=black, fill=blue!5,
+                    text centered, minimum width=4.2cm, minimum height=1cm},
+    startstop/.style={ellipse, draw=black, fill=gray!15,
+                      text centered, minimum width=3cm, minimum height=1cm},
+    rviz/.style={rectangle, draw=black, fill=green!10, rounded corners,
+                 text centered, minimum width=3.5cm, minimum height=0.9cm,
+                 font=\scriptsize},
+    arrow/.style={thick,->,>=stealth},
+    every node/.style={font=\small}
+  ]
+
+  % Hauptlinie
+  \node (start)   [startstop] {Start};
+  \node (input)   [process, below of=start] {Messdaten einlesen};
+  \node (crop)    [process, below of=input] {CropBox-Filter};
+  \node (voxel)   [process, below of=crop] {VoxelGrid-Filter};
+  \node (ground)  [process, below of=voxel] {Bodensegmentierung};
+  \node (cluster) [process, below of=ground] {Cluster-Extraktion \& Bounding Boxes};
+  \node (track)   [process, below of=cluster] {Objektverfolgung};
+  \node (end)     [startstop, below of=track] {Ende};
+
+  % \ac{RViz}-Knoten (rechts)
+  \node (rviz_input)  [rviz, right=4.1cm of input]  {\ac{RViz}};
+  \node (rviz_crop)   [rviz, right=4.1cm of crop]   {\ac{RViz}};
+  \node (rviz_voxel)  [rviz, right=4.1cm of voxel]  {\ac{RViz}};
+  \node (rviz_ground) [rviz, right=4.1cm of ground] {\ac{RViz}};
+  \node (rviz_cluster)[rviz, right=2.8cm of cluster]{\ac{RViz}};
+  \node (rviz_track)  [rviz, right=4.1cm of track]  {\ac{RViz}};
+
+  % Vertikale Pfeile (Verarbeitungskette)
+  \draw[arrow] (start) -- (input);
+  \draw[arrow] (input) -- node[right]{\scriptsize \texttt{/ouster/points}} (crop);
+  \draw[arrow] (crop)  -- node[right]{\scriptsize \texttt{/points\_cropped}} (voxel);
+  \draw[arrow] (voxel) -- node[right]{\scriptsize \texttt{/points\_voxel}} (ground);
+  \draw[arrow] (ground)-- node[right]{\scriptsize \texttt{/obstacle\_points}} (cluster);
+  \draw[arrow] (cluster)-- node[right]{\scriptsize \texttt{/detections\_raw}} (track);
+  \draw[arrow] (track) -- node[right]{\scriptsize \texttt{/tracks\_raw}} (end);
+
+  % Pfeile zu \ac{RViz} (alle Schritte)
+  \draw[arrow] (input.east)  -- node[above,sloped]{\scriptsize \texttt{/ouster/points}} (rviz_input.west);
+  \draw[arrow] (crop.east)   -- node[above,sloped]{\scriptsize \texttt{/points\_cropped}} (rviz_crop.west);
+  \draw[arrow] (voxel.east)  -- node[above,sloped]{\scriptsize \texttt{/points\_voxel}} (rviz_voxel.west);
+  \draw[arrow] (ground.east) -- node[above,sloped]{\scriptsize \texttt{/obstacle\_points}} (rviz_ground.west);
+  \draw[arrow] (cluster.east)-- node[above,sloped]{\scriptsize \texttt{/detections\_markers}} (rviz_cluster.west);
+  \draw[arrow] (track.east)  -- node[above,sloped]{\scriptsize \texttt{/tracks\_markers}} (rviz_track.west);
+
+  % Caption & Label
+  \end{tikzpicture}
+  \caption{\ac{ROS}~2-Algorithmus mit allen Nodes, ihren Topic-Verbindungen und den Ausgaben zur Visualisierung in \ac{RViz}.}
+  \label{fig:ros2-verarbeitungskette-alltopics}
+\end{figure}
+
+\section{Grundlagen von \ac{ROS}~2}
+\label{sec:ros2_basics}
+Das \emph{Robot Operating System~2 (\ac{ROS}~2)} ist ein quelloffenes Framework für modulare, verteilte Robotiksysteme. Es stellt Middleware-basierte Kommunikation (DDS), wiederverwendbare Komponenten und Entwicklungswerkzeuge bereit. Dank Skalierbarkeit und Plattformunabhängigkeit wird \ac{ROS}~2 in Forschung und Industrie eingesetzt (z.\,B. autonome Fahrzeuge, mobile Robotik, Inspektion).
+
+\paragraph{Nodes}
+\label{sec:ros2_nodes}
+
+In ROS2 stellen \textit{Nodes} die grundlegenden Ausführungseinheiten des Systems dar. 
+Jeder Node repräsentiert einen eigenständigen Prozess, der eine bestimmte Funktion erfüllt – beispielsweise das Erfassen von Sensordaten, die Datenverarbeitung oder die Ansteuerung von Aktoren. 
+Die Modularisierung erlaubt klar definierte Schnittstellen und Wiederverwendung (vgl. \cite{ros2_docs}).
+
+\paragraph{Topics}
+\label{sec:ros2_topics}
+
+Die Kommunikation zwischen Nodes erfolgt in ROS2 hauptsächlich über \textit{Topics}. Sie transportieren Nachrichten nach dem Publish/Subscribe-Prinzip.
+Ein Node kann Daten auf einem Topic veröffentlichen (\textit{publish}) oder von diesem empfangen (\textit{subscribe}). 
+Publisher und Subscriber sind entkoppelt, was flexible, verteilte Architekturen ermöglicht (vgl. \cite{ros2_docs}).
+
+\paragraph{Nachrichten}
+\label{sec:ros2_messages}
+
+Die über Topics ausgetauschten Informationen werden in Form von \textit{Nachrichten (Messages)} übertragen. 
+Eine Nachricht besteht aus einer definierten Datenstruktur, die verschiedene Datentypen wie Ganzzahlen, Gleitkommazahlen, Arrays oder benutzerdefinierte Typen enthalten kann. 
+Diese klar definierte Struktur ermöglicht einen standardisierten und sicheren Datenaustausch zwischen Nodes, unabhängig von der zugrunde liegenden Programmiersprache(~\cite{ros2_docs}).
+
+\paragraph{Bags}
+\label{sec:ros2_bags}
+
+\textit{ROS2 Bags} dienen zur Aufzeichnung, Speicherung und Wiederverwendung von Nachrichten, die über Topics ausgetauscht werden.  
+Sie unterstützen Analyse, Debugging und reproduzierbare Experimente (vgl. \cite{ros2_docs}).
+
+\paragraph{RViz2}
+\label{sec:ros2_rviz2}
+
+\textit{RViz2} ist ein Visualisierungstool, das zur Darstellung und Analyse der in ROS2 verarbeiteten Daten verwendet wird. 
+Es ermöglicht die dreidimensionale Visualisierung von Punktwolken, Robotermodellen, Trajektorien und Sensordatenströmen in Echtzeit und unterstützt Entwicklung und Fehlersuche (vgl. \cite{ros2_docs}).
+
+
+\paragraph{DDS, Discovery und Transports}
+
+\ac{ROS}~2 verwendet das \emph{Data Distribution Service} (DDS) als Kommunikationsmiddleware, wobei die RMW-Schicht die Kommunikation über DDS-basierte Implementierungen wie Fast~DDS und Cyclone~DDS abstrahiert. DDS übernimmt die zuverlässige Nachrichtenverteilung sowie das Teilnehmermanagement innerhalb eines \ac{ROS}~2-Netzwerks \parencite{rmw_implementations}.
+
+\begin{itemize}
+  \item \textbf{Discovery:}  
+  Die automatische Erkennung von Teilnehmern erfolgt über die DDS-Mechanismen SPDP und SEDP, die Multicast-Traffic zur Detektion neuer Knoten verwenden. Die \emph{Domain-ID} trennt unterschiedliche DDS-Netze logisch und bestimmt die verwendeten Ports \parencite{ros2_traffic}.
+  
+  \item \textbf{Transports:}  
+  Standardmäßig nutzt DDS UDP für die Netzwerkommunikation. Für datenintensive Anwendungen stehen jedoch optimierte Transportpfade wie Shared-Memory und intra-process-Kommunikation zur Verfügung, die Kopien reduzieren und Latenzen minimieren \parencite{fastdds_shm}.
+  
+  \item \textbf{Konfiguration:}  
+  DDS-Einstellungen wie genutzte Netzwerkschnittstellen, Whitelists, Zeitlimits oder Transportparameter können über XML-Profile oder Umgebungsvariablen konfiguriert werden. Cyclone DDS lädt Konfigurationen über die Variable \texttt{CYCLONEDDS\_URI} \parencite{cyclonedds_config}.
+\end{itemize}
+
+Praktisch empfiehlt es sich, bei Systemen mit hoher Punktdichte (z.\,B.\ \ac{LiDAR}-Verarbeitung) Shared-Memory- oder intra-process-Kommunikation zu aktivieren und die Netzwerkschnittstelle explizit zu wählen, um Discovery-Traffic zu reduzieren und eine stabile Datenübertragung sicherzustellen \parencite{fastdds_shm}.
+
+\paragraph{Quality of Service (\ac{QoS})}
+\label{sec:ros2_qos}
+In \ac{ROS}~2 definieren Quality-of-Service-Profile (\ac{QoS}) die Kommunikationssemantik zwischen Publishern und Subscribern. Sie beeinflussen maßgeblich Latenz, Paketverluste, Speicherbedarf und Synchronisation entlang der Verarbeitungskette. Besonders bei hochfrequenten Sensorströmen wie \ac{LiDAR} ist eine konsistente und angepasste \ac{QoS}-Konfiguration entscheidend für die Systemstabilität.
+
+Die Konfiguration der \ac{QoS}-Profile in \ac{ROS}~2 umfasst mehrere Parameter, von denen insbesondere \textbf{Reliability}, \textbf{History/Depth} und \textbf{Durability} die Übertragungseigenschaften von Sensordaten maßgeblich bestimmen. Eine kompakte Übersicht der Vor- und Nachteile findet sich in Tab.~\ref{tab:qos_vt_nt}. Die Definitionen basieren auf den DDS-Spezifikationen gemäß OMG-Standard \parencite{OMG_DDS_Spec}.
+
+\begin{table}[H]
+\centering
+\caption{Wesentliche \ac{QoS}-Parameter und ihre Vor- und Nachteile}
+\label{tab:qos_vt_nt}
+\begin{tabularx}{\textwidth}{l X X}
+\toprule
+\textbf{Parameter} & \textbf{Vorteile} & \textbf{Nachteile} \\
+\midrule
+\textbf{Reliability: Reliable} & Garantierte Zustellung; keine Datenverluste & Höhere Latenz bei hoher Last; höherer Ressourcenbedarf \\
+\textbf{Reliability: BestEffort} & Niedrige Latenz; ressourcenschonend & Nachrichten können verloren gehen \\
+\textbf{History: KeepLast(N)} & Begrenzter Speicherverbrauch; stabil vorhersehbar & Ältere Nachrichten werden verworfen \\
+\textbf{History: KeepAll} & Keine Nachricht geht verloren & Hoher Speicherbedarf; ungeeignet bei hohen Datenraten \\
+\textbf{Durability: Volatile} & Ideal für Echtzeitströme; keine Verzögerung & Späte Subscriber erhalten keine alten Daten \\
+\textbf{Durability: TransientLocal} & Neue Subscriber erhalten letzte Nachricht sofort & Erhöhter Speicheraufwand; nicht geeignet für \ac{LiDAR}-Daten \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Die \textbf{Reliability-Policy} legt fest, wie mit Nachrichtenverlusten umgegangen wird. Bei \emph{Reliable} garantiert DDS die Zustellung aller Pakete, was für deterministische Verarbeitungsschritte erforderlich ist, jedoch bei hohen Sensordatenraten zu Latenzsteigerungen führen kann. Dies entspricht dem von \ac{ROS}~2 empfohlenen Verhalten für kritische Datenströme \parencite{Maruyama2016ROS2}. \emph{BestEffort} verzichtet dagegen auf Garantien und ist insbesondere für Visualisierungstopics wie \texttt{/ouster/points} geeignet, da dort gelegentliche Verluste tolerierbar sind.
+
+Die \textbf{History-Einstellung} bestimmt, wie viele Nachrichten gepuffert werden. Für \ac{LiDAR}-Anwendungen mit hohen Datenraten empfiehlt sich \emph{KeepLast} mit geringer Tiefe (5--10), da kontinuierlich neue Punktwolken eintreffen und ältere Daten obsolet werden. Diese Empfehlung findet sich ebenfalls in \ac{ROS}~2-Profilingstudien, die den hohen Speicherbedarf von \emph{KeepAll} dokumentieren \parencite{Buhlmann2022QoSStudy}.
+
+Die \textbf{Durability} sollte bei Echtzeitdaten grundsätzlich \emph{Volatile} sein, da nur aktuelle Sensordaten relevant sind. \emph{TransientLocal} eignet sich hingegen für selten publizierte Konfigurations- oder Statusnachrichten, für die neue Subscriber die zuletzt bekannte Information sofort erhalten sollen \parencite{DDS_Primer2018}.
+
+Weitere \ac{QoS}-Parameter wie \emph{Deadline}, \emph{Liveliness} und \emph{Lifespan} spielen im \ac{LiDAR}-Kontext eine untergeordnete Rolle. Sie können jedoch zur Laufzeitüberwachung eingesetzt werden, beispielsweise zur Erkennung ausgefallener Publisher oder verzögerter Messungen \parencite{ROS2_Design_QoS}.
+
+
+In der Praxis ergeben sich daraus folgende empfohlenen Einstellungen: 
+Für die Verarbeitungskette (z.\,B. \texttt{/points\_cropped}, \texttt{/detections\_raw}) 
+ist ein Profil mit \emph{Reliable}, \emph{KeepLast(10)} und \emph{Volatile} zweckmäßig, 
+um Datenverluste bei gleichzeitig moderater Pufferung zu vermeiden. 
+Für Visualisierungstopics wie \texttt{/ouster/points} genügt meist \emph{BestEffort} 
+mit geringer Tiefe, da verpasste Nachrichten tolerierbar sind.
+
+Die Tabelle ~\ref{tab:qos-topics} zeigt die \ac{QoS}-Profile der in dieser Arbeit erstellten Topics. Publisher und Subscriber handeln bei Verbindungsaufbau die Schnittmenge ihrer \ac{QoS}-Profile aus. Dabei können Fehlermodi auftreten: etwa wenn ein \emph{Reliable}-Publisher mit einem \emph{BestEffort}-Subscriber verbunden wird – in diesem Fall wird die Kommunikation zwar aufgebaut, aber der Publisher puffert gegebenenfalls unkontrolliert. Ebenso führt ein Mismatch bei der \emph{Durability} dazu, dass historische Nachrichten nicht übertragen werden. Eine zu geringe \emph{Depth} wiederum kann zu Paketverlusten oder wachsender Latenz führen. Daher sollten \ac{QoS}-Parameter explizit je Topic gesetzt und aktiv überwacht werden.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+
+\begin{tabularx}{\textwidth}{|l|c|l|l|X|}
+\hline
+\textbf{Knoten} & \textbf{Rolle} & \textbf{Topic} & \textbf{Typ} & \textbf{\ac{QoS}} \\
+\hline
+
+crop\_box\_node & Sub & \texttt{/ouster/points} & PointCloud2       & SensorDataQoS (Best Effort) \\ \hline
+crop\_box\_node & Pub & \texttt{/points\_cropped} & PointCloud2     & SensorDataQoS (Best Effort) \\ \hline
+
+voxel\_filter\_node & Sub & \texttt{/points\_cropped} & PointCloud2    & SensorDataQoS (Best Effort) \\ \hline
+voxel\_filter\_node & Pub & \texttt{/points\_voxel} & PointCloud2      & SensorDataQoS (Reliable) \\ \hline
+
+ransac\_ground\_node & Sub & \texttt{/points\_voxel} & PointCloud2      & SensorDataQoS (Best Effort) \\ \hline
+ransac\_ground\_node & Pub & \texttt{/obstacle\_points} & PointCloud2   & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
+
+cluster\_extraction\_node & Sub & \texttt{/obstacle\_points} & PointCloud2  & SensorDataQoS (Best Effort) \\ \hline
+cluster\_extraction\_node & Pub & \texttt{/detections\_markers} & MarkerArray & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
+cluster\_extraction\_node & Pub & \texttt{/detections\_raw} & Detection3DArray & SensorDataQoS (Best Effort) \\ \hline
+
+sort\_tracker\_node & Sub & \texttt{/detections\_raw} & Detection3DArray & SensorDataQoS (Best Effort) \\ \hline
+sort\_tracker\_node & Pub & \texttt{/tracks\_raw} & Detection3DArray  & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
+sort\_tracker\_node & Pub & \texttt{/tracks\_markers} & MarkerArray     & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
+
+\end{tabularx}
+
+\caption{\ac{QoS}-Profile der im Code verwendeten Topics (Default-Werte).}
+\label{tab:qos-topics}
+\end{table}
+
+\section{Datenrepräsentation und Bibliotheken}
+\subsection{\texttt{sensor\_msgs/PointCloud2}: Felder, Koordinaten und Layout}
+Ouster~\ac{OS1}-Daten werden als \texttt{sensor\_msgs/PointCloud2} publiziert. Tabelle~\ref{tab:pointcloud2-fields} fasst die wichtigsten Felder und deren Semantik zusammen; die konkreten Datentypen (z.\,B. \texttt{float32} oder \texttt{uint16}) hängen von Treiber- und Konfiguration ab.
+
+\begin{table}[H]
+  \centering
+  \small % réduit la taille
+  \setlength{\tabcolsep}{6pt} % réduit l'espace horizontal
+  \renewcommand{\arraystretch}{1.05} % compacte verticalement
+
+  \begin{tabular}{|p{2.2cm}|p{13cm}|}
+    \hline
+    \textbf{Feld} & \textbf{Bedeutung} \\ \hline
+
+    \texttt{x, y, z} &
+    Kartesische Koordinaten (m) im \texttt{frame\_id}. 
+    Rechtsdrehendes System nach REP~103: \(x\) vorwärts, \(y\) links, \(z\) oben. \\ \hline
+
+    \texttt{intensity} &
+    Reflektierte Signalstärke (\texttt{uint16}); abhängig von Sensorkalibrierung und daher nur innerhalb eines Scans vergleichbar. \\ \hline
+
+    \texttt{ring} &
+    Vertikaler Kanalindex (Laser/Detektor). Beim \ac{OS1}-64: 64 Ringe von 0 (unten) bis 63 (oben). \\ \hline
+
+    \texttt{time} &
+    Zeitversatz eines Punktes relativ zu \texttt{header.stamp} (s); wichtig für Motion Compensation innerhalb eines Scans. \\ \hline
+
+  \end{tabular}
+
+  \caption{Zentrale Felder von \texttt{sensor\_msgs/PointCloud2} für den Ouster~\ac{OS1}.}
+  \label{tab:pointcloud2-fields}
+\end{table}
+
+
+Alle Felder werden typischerweise little-endian kodiert (\texttt{is\_bigendian = false}). Das Speicherlayout folgt einem linearen Puffer \texttt{data} mit \texttt{point\_step} (Byte pro Punkt) und \texttt{row\_step} (Byte pro Zeile). Die Dimensionen \texttt{width}/\texttt{height} beschreiben eine 2D-Anordnung: Bei rotierenden LiDARs entspricht \texttt{height} der Ringanzahl, \texttt{width} der Punktzahl pro Umdrehung. \texttt{is\_dense} signalisiert, ob \enquote{NaN}-Einträge vorkommen. Eine organisierte Wolke (Ring~\(\times\) Azimut) ermöglicht effiziente nachbarschaftsbasierte Filter und Segmentierung sowie ringweise Verarbeitung (z.\,B. Bodenfilter nur auf unteren Ringen).
+
+\subsection{Point Cloud Library (\ac{PCL})}
+\label{chap:pcl}
+Die \emph{Point Cloud Library (\ac{PCL})} bildet die Grundlage der Umfelderkennung. Sie ist eine freie C++-Bibliothek (BSD-Lizenz), die ursprünglich 2011 bei Willow~Garage als Teil des \ac{ROS}-Ökosystems entstand und seitdem von der Community rund um Open~Perception und industrielle Anwender weiterentwickelt wird (vgl. \cite{pcl_docs_2025}). \ac{PCL} bietet eine umfangreiche Sammlung modularer Algorithmen: Punktfilterung (Downsampling, Zuschneiden, Rauschunterdrückung), Normalen- und Merkmalsextraktion, \ac{RANSAC}-basierte Segmentierung, Registrierung (z.\,B. \ac{ICP}), Oberflächenrekonstruktion, Nachbarschaftssuchen auf k-d-Baum/Octree-Basis, Clusteranalyse sowie Visualisierung und Dateiformate (PCD). In \ac{ROS}~2 erfolgt die Einbindung über \texttt{pcl\_conversions} und ggf. \texttt{pcl\_ros}; \texttt{sensor\_msgs/PointCloud2} wird bidirektional in \texttt{pcl::PointCloud<T>} konvertiert.
+
+\subsection{Genutzte Module und Algorithmen}
+Die Verarbeitungskette stützt sich auf etablierte \ac{PCL}-Module, die in \ac{ROS}~2 stabil verfügbar sind und nachvollziehbare Laufzeiteigenschaften besitzen:
+\begin{itemize}
+  \item \textbf{Filter}: \texttt{CropBox}/\texttt{PassThrough} begrenzen den Arbeitsbereich auf das relevante Fahrumfeld und reduzieren die Punktzahl frühzeitig (vgl. Abschnitt~\ref{sec:cropbox}); \texttt{VoxelGrid} homogenisiert die Punktdichte und senkt den Rechenaufwand nachgelagerter Schritte ohne signifikanten Geometrieverlust (Abschnitt~\ref{sec:voxelgrid}). Auf zusätzliche Ausreißerfilter (z.\,B. \texttt{StatisticalOutlierRemoval}) wird in der implementierten Verarbeitungskette zugunsten geringerer Latenz verzichtet; das Rohsignal erwies sich im Testfeld als hinreichend stabil (Kapitel~\ref{chap:vorverarbeitung}).
+  \item \textbf{Segmentierung}: Eine plane \ac{RANSAC}-Segmentierung trennt Boden- von Hindernispunkten. \texttt{pcl::SACSegmentation} mit \texttt{SACMODEL\_PLANE} ist robust gegenüber Ausreißern, erfordert nur wenige Parameter (Abstands- und Iterationsschranke) und lässt sich effizient in Echtzeit ausführen. Die methodische Begründung und Parametertabellen finden sich in Kapitel~\ref{chap:bodensegmentierung}.
+  \item \textbf{Clustering}: \texttt{EuclideanClusterExtraction} auf Basis eines \texttt{pcl::search::KdTree} gruppiert die bodenfreien Punkte. Der Ansatz liefert reproduzierbare Ergebnisse, benötigt nur \(\varepsilon\)-Nachbarschaft und Min/Max-Clustergröße als Stellgrößen und ist in zahlreichen \ac{LiDAR}-Verarbeitungsketten erprobt. Die konkrete Umsetzung und Parameterstudie stehen in Kapitel~\ref{chap:clustering}.
+  \item \textbf{Konvertierung}: \texttt{pcl::fromROSMsg}/\texttt{pcl::toROSMsg} sowie \texttt{pcl\_conversions} bilden die Brücke zwischen \ac{ROS}~2-Nachrichten und \ac{PCL}-Datenstrukturen. Sie sind erforderlich, damit die oben genannten \ac{PCL}-Algorithmen in den \ac{ROS}-Knoten der Vorverarbeitung, Bodensegmentierung und Clusterung arbeiten können.
+\end{itemize}
+\textbf{Performance}: Durch Vorallokation (z.\,B. Puffergrößen für KdTree und Clusterlisten), die Vermeidung redundanter Kopien und die Wahl leichter Punkttypen wie \texttt{pcl::PointXYZI} wird eine konstante Verarbeitung bei 10~Hz ermöglicht; die Wirkung der Einstellungen wird in den Kapitelabschnitten zu Vorverarbeitung (Kapitel~\ref{chap:vorverarbeitung}) und Clustering (Kapitel~\ref{chap:clustering}) gemessen und diskutiert.
+
+Die genannten Module tauchen entlang der gesamten Verarbeitungskette wieder auf: Die Filterstufe in Kapitel~\ref{chap:vorverarbeitung} bereitet die Daten für die \ac{RANSAC}-Bodensegmentierung in Kapitel~\ref{chap:bodensegmentierung} vor; deren Ergebnis dient als Ausgangspunkt für die Cluster-Extraktion und Bounding-Box-Ermittlung in Kapitel~\ref{chap:clustering}. Dadurch ist nachvollziehbar, warum jede Komponente ausgewählt wurde und wie sie mit den nachfolgenden Modulen interagiert.
+Für Entwicklung und Ausführung wird \textbf{Ubuntu~22.04~LTS (Jammy Jellyfish)} verwendet. Als Referenzplattform für \ac{ROS}~2 ermöglicht Ubuntu eine nahtlose Integration von Bibliotheken, Treibern und Werkzeugen (vgl. \cite{ubuntu_docs_2025}). Die Distribution bietet stabile C++/Python-Toolchains, hohe Sicherheit und breite Unterstützung in wissenschaftlicher wie industrieller Softwareentwicklung. Die enge Verzahnung mit der in dieser Arbeit eingesetzten \ac{ROS}-Distribution \emph{Humble~Hawksbill} vereinfacht die Einrichtung der Abhängigkeiten. Die aktive Entwicklergemeinschaft sorgt durch regelmäßige Updates, umfassende Dokumentation und eine große Auswahl an Open-Source-Paketen für einen reibungslosen Entwicklungsprozess. Dank der modularen Struktur von Linux lässt sich die Arbeitsumgebung flexibel an die spezifischen Anforderungen der Sensorintegration und der \ac{ROS}-Module anpassen.
+
+\subsection{Bash-Skripte}
+Bash-Skripte automatisieren wiederkehrende Aufgaben (Workspace laden, Launch starten, Aufzeichnung) und sind ein zentrales Werkzeug in Linux-basierten Entwicklungsumgebungen. In dieser Arbeit fungiert ein Skript als Bindeglied zwischen der GUI und dem Python-\texttt{launch}-File der Verarbeitungskette. Der typische Ablauf umfasst folgende Schritte:
+\begin{enumerate}
+  \item Laden der \ac{ROS}~2-Umgebung (\texttt{source /opt/ros/humble/setup.bash}) und des projektinternen Workspace (\texttt{source \$\{WORKSPACE\}/install/setup.bash}) über \texttt{set -euo pipefail}, damit Fehler frühzeitig abbrechen.
+  \item Übergabe benutzerdefinierter Parameter (z.\,B. Topic-Namen, Ausgabeordner, Logging-Level) aus der GUI via Shell-Argumente; diese werden an das Python-Launch-File durchgereicht.
+  \item Start des zentralen Launch-Files (\texttt{ros2 launch...}) als Hintergrundprozess
+  \item Persistente Ablage von Logs und Bags in einer datierten Ordnerstruktur (z.\,B. \texttt{logs/\$\{DATE\}}) sowie Ausgabe standardisierter Statusmeldungen (\texttt{echo}, \texttt{printf}).
+\end{enumerate}
+  Dadurch werden alle erforderlichen Knoten in definierter Reihenfolge aktiviert, die GUI entlastet und ein reproduzierbarer Start der Verarbeitungskette ermöglicht (inklusive optionaler Aufzeichnung und definierter Bereinigung bei Abbruch). Der Ablauf orientiert sich an den offiziellen \ac{ROS}~2-Empfehlungen für Launch-Dateien und Bash-Wrapper-Skripte\parencite{ros2_launch_docs}.
+
+%\subsection*{\ac{ROS}~2 CLI und Monitoring}
+%Zur Inspektion der Laufzeitumgebung werden \texttt{ros2}-Werkzeuge genutzt: \texttt{topic list/info/hz/bw/delay}, \texttt{node list/info}, \texttt{interface show}, \texttt{doctor}. Sie unterstützen Durchsatz-/Latenzschätzung, Interface-Inspektion und Grunddiagnostik.
+
+\section{Deployment und Packaging}
+Die Umsetzung erfolgt im \ac{ROS}~2-Workspace (\texttt{colcon}); \texttt{src/} enthält die Pakete, \texttt{build/}/\texttt{install/}/\texttt{log/} werden erzeugt. Abhängigkeiten werden in \texttt{package.xml} deklariert und in \texttt{CMakeLists.txt} gebunden. Eine Trennung in Bibliotheken (Kernlogik) und Executables (\ac{ROS}~2-Anbindung) erhöht die Wiederverwendbarkeit.
+
+Start und Parametrisierung erfolgen über Launch-Dateien. Namensräume strukturieren Topics (z.\,B. Sensorpfad, Verarbeitungspfad) und erlauben parallele Instanziierung. Die Visualisierung erfolgt über \textbf{RViz2}.
+
+\section{Leistungsmetriken und Verifikation}
+
+Die im Folgenden betrachteten Metriken sind kein Selbstzweck, sondern direkt aus der
+Anforderungsdefinition und dem Stand der Technik abgeleitet. Veröffentlichte Arbeiten zu
+Echtzeit-Objekterkennung evaluieren systematisch Ende-zu-Ende-Latenz sowie CPU/RAM-Bedarf
+als zentrale Gütekriterien (vgl. \cite{feng2021survey}). Genau diese Größen entsprechen den in
+Tabelle~\ref{tab:anforderungen_messkette} formulierten Messkriterien: \textbf{Anforderung~6}
+fordert eine Ende-zu-Ende-Latenz von unter \(100\,\text{ms}\) bei stabilen \(10\,\text{Hz}\),
+\textbf{Anforderung~7} begrenzt die Auslastung auf \(\leq 60\,\%\) CPU/RAM auf Standardhardware.
+Die gewählten Verifikationsschritte (Zeitstempel-Instrumentierung für Latenz, Profiler für
+Ressourcennutzung) knüpfen somit unmittelbar an die definierten Anforderungen an und machen
+nachvollziehbar, wie deren Erfüllung gemessen und nachgewiesen wird.
+
+\subsection{E2E-Latenz}
+Für das betrachtete System wird eine Ende-zu-Ende-Latenz von weniger als \(100\,\text{ms}\) bei einer Verarbeitung mit \(10\,\text{Hz}\) angestrebt. Zur Verifikation werden an den Modulgrenzen Zeitstempel gesetzt (Eingang und Ausgang), die anschließend hinsichtlich Mittelwert, 95. Perzentil und 99. Perzentil über lange Sequenzen ausgewertet werden. Die Messungen erfolgen bei der Wiedergabe identischer Datensätze aus \texttt{rosbag2}; die zugrundeliegenden Aufzeichnungen sind im digitalen Anhang dokumentiert (Abschnitt~\ref{anhang:messaufzeichnungen}). Die Instrumentierung erfolgt anhand des Eingangszeitstempels aus \texttt{header.stamp}, während Zwischenzeiten innerhalb der Module mitgeführt und protokolliert werden. Eine gemeinsame Zeitbasis (z.\,B. deaktivierte Simulationszeit oder externe Synchronisation) wird vorausgesetzt, um Vergleichbarkeit und Konsistenz zu gewährleisten.
+
+\subsection{Ressourcennutzung (CPU/RAM)}
+Die Auslastung der Rechen- und Speicherressourcen wird für jeden Knoten unter repräsentativer Last erfasst. Optimierungsmaßnahmen wie ein angepasstes Datenlayout, die Vermeidung unnötiger Kopien oder die Vorallokation von Puffern werden dokumentiert und quantitativ bewertet. Zur Analyse kommen Werkzeuge wie \texttt{ros2 topic hz /ouster/points} und \texttt{ros2 topic hz /tracks\_raw} zum Einsatz.
+Außerdem wird ein Python Skript ausgeführt zur Berechnung der CPU Auslastung pro Node (resource\_probe.py); das vollständige Skript ist im digitalen Anhang hinterlegt (Abschnitt~\ref{anhang:skripte}).
+
+\subsection{Objekterkennung und -verfolgung}
+Die Güte der Objektdetektion und -verfolgung wurde primär mit zwei ROS-Tools bewertet: \texttt{ids\_probe.py} und \texttt{frame\_loss\_probe.py}. Erstere verfolgt die Lebenszyklen einzelner Track-IDs und meldet pro Auswertefenster die Anzahl neu erzeugter IDs (\emph{births/min}), abgeschlossener Tracks (\emph{completed/min}) sowie die mediane aktive Lebensdauer sowohl laufender als auch bereits finalisierter Tracks. Damit lassen sich übermäßige ID-Wechsel oder instabile Verfolgungen unmittelbar erkennen. \texttt{frame\_loss\_probe.py} misst hingegen für jede Stufe der Verarbeitungskette die effektive Nachrichtenrate und berechnet Durchlassraten zwischen den benachbarten Topics (\emph{pass\%}) sowie gezählte Lücken (\emph{gaps}) basierend auf ausbleibenden Nachrichten über eine adaptive Schwellwertlogik. So wird transparent, an welcher Stelle Frames verloren gehen oder die Frequenz einbricht, und wie sich dies auf die nachgelagerten Detektions- und Tracking-Ergebnisse auswirkt.

@@ -1,0 +1,331 @@
+\chapter{Bodensegmentierung}
+\label{chap:bodensegmentierung}
+
+Die Bodensegmentierung ist ein essenzieller Vorverarbeitungsschritt innerhalb der Verarbeitungskette zur Objekterkennung.
+Ihr Ziel besteht darin, Bodenpunkte zuverlässig von Hindernissen und anderen Objekten zu trennen, um die nachfolgenden Schritte – insbesondere die Cluster- und Objekterkennung – zu erleichtern.
+Dieses Kapitel führt die Anforderungen an eine robuste Bodensegmentierung ein, vergleicht gängige Verfahren anhand klarer Bewertungskriterien und stellt die implementierte \ac{RANSAC}-Variante im Detail vor. Dadurch ergibt sich ein roter Faden von den Anforderungen über den Methodenvergleich bis hin zur konkreten Umsetzung.
+
+
+\section{Anforderungen an die Bodensegmentierung}
+\label{sec:anforderungen_bodenseg}
+
+Die wichtigsten Anforderungen an ein Bodensegmentierungsverfahren lassen sich nach~\cite{gomes2023survey} in mehreren Kriterien zusammenfassen, die in Tabelle~\ref{tab:anforderungen_bodensegmentierung} dargestellt sind.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.3} % augmente l'espacement vertical
+\setlength{\tabcolsep}{8pt}       % ajuste l'espacement horizontal
+\begin{tabular}{|p{4cm}|p{9.5cm}|}
+\hline
+\textbf{Kriterium} & \textbf{Beschreibung} \\ \hline
+
+\textbf{Echtzeitfähigkeit} & 
+Das Verfahren muss Punktwolken in Echtzeit verarbeiten können (z.\,B. <100\,ms pro Frame), 
+um eine kontinuierliche Fahrzeugsteuerung zu ermöglichen. \\ \hline
+
+\textbf{Rechenaufwand} & 
+Geringe Rechen- und Speicheranforderungen sind notwendig, 
+da die Algorithmen häufig auf eingebetteten Systemen mit begrenzten Ressourcen laufen. \\ \hline
+
+\textbf{Segmentierungs\-robustheit} & 
+Das Verfahren sollte robust gegenüber Über- und Untersegmentierung sein 
+und Bodenpunkte korrekt von Hindernissen trennen. \\ \hline
+
+\textbf{Leistung bei steigenden Hindernissen} & 
+Die Methode sollte sanft ansteigende Strukturen (z.\,B. Rampen oder Bordsteine) 
+korrekt als Teil des Bodens erkennen. \\ \hline
+
+\textbf{Leistung bei unebenem Gelände} & 
+Auch bei Neigungen oder unregelmäßigen Bodenoberflächen 
+muss die Bodenschätzung stabil bleiben. \\ \hline
+
+\textbf{Leistung bei spärlichen Daten} & 
+Das Verfahren sollte bei geringer Punktdichte (z.\,B. großer Abstand zum Sensor) 
+zuverlässige Ergebnisse liefern. \\ \hline
+\end{tabular}
+
+\vspace{5pt}
+\caption{Hauptanforderungen an die Bodensegmentierung (nach~\cite{gomes2023survey})}
+\label{tab:anforderungen_bodensegmentierung}
+\end{table}
+
+Aus den sechs Anforderungen werden für die weitere Analyse vier Bewertungskriterien abgeleitet:
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|c|p{4cm}|p{9cm}|}
+\hline
+\textbf{Nr.} & \textbf{Kriterium} & \textbf{Beschreibung} \\ \hline
+1 & Echtzeitfähigkeit & Bewertet, ob die Methode unter den gegebenen Rechenbedingungen (10\,Hz Sensorrate) eine kontinuierliche Verarbeitung der Punktwolke in Echtzeit ermöglicht. \\ \hline
+2 & Robustheit & Misst die Widerstandsfähigkeit gegenüber Rauschen, Ausreißern und unterschiedlichen Geländetypen (z.\,B. unebenes Terrain oder variable Punktdichten). \\ \hline
+3 & Genauigkeit & Beschreibt die Fähigkeit der Methode, die Bodenpunkte präzise von Nicht-Bodenpunkten zu trennen und somit eine zuverlässige Segmentierung zu gewährleisten. \\ \hline
+4 & Rechenaufwand & Bewertet den benötigten Ressourcenverbrauch (CPU/GPU-Zeit und Speicherbedarf) für die Durchführung der Bodensegmentierung. \\ \hline
+\end{tabular}
+\caption{Bewertungskriterien zur Analyse der Bodensegmentierungsmethoden.}
+\label{tab:bewertungskriterien}
+\end{table}
+
+Die Auswahl dieser vier Bewertungskriterien orientiert sich an den Einsatzbedingungen urbaner \ac{LiDAR}-Szenarien: komplexe Geometrien und bewegte Objekte erfordern Robustheit und Genauigkeit, das Bordzeitbudget verlangt Echtzeitfähigkeit, und eingeschränkte Ressourcen machen einen geringen Rechenaufwand nötig. Tabelle~\ref{tab:bewertungskriterien} fasst die Verdichtung der sechs Anforderungen aus Tabelle~\ref{tab:anforderungen_bodensegmentierung} zusammen, indem inhaltlich verwandte Punkte gebündelt werden:
+\begin{itemize}
+    \item \textbf{Robustheit} fasst die Leistungsbewertung bei steigenden Hindernissen, unebenem Gelände und spärlichen Daten zusammen,
+    weil alle drei Aspekte die Widerstandsfähigkeit gegenüber unterschiedlichen Gelände- und Sensordichtevariationen abprüfen.
+    \item \textbf{Genauigkeit} nimmt den Aspekt der korrekten Trennung von Boden- und Nicht-Bodenpunkten aus der Segmentierungsrobustheit auf,
+    um die resultierende Segmentierungsqualität klar zu bewerten.
+    \item \textbf{Echtzeitfähigkeit} und \textbf{Rechenaufwand} bleiben als eigenständige Kriterien erhalten,
+    da sie die Laufzeit- und Ressourcenanforderungen unabhängig von den Szenarioeigenschaften adressieren.
+\end{itemize}
+
+\section{Methoden der Bodensegmentierung}
+\label{chap:bodenmethoden}
+
+Nach~\cite{gomes2023survey} lassen sich die gängigen Verfahren zur Bodensegmentierung
+in fünf Hauptkategorien einteilen (siehe Abbildung~\ref{fig:boden_taxonomie}):
+
+\begin{itemize}
+    \item 2.5D-Gitterbasierte Verfahren
+    \item Bodenmodellierung (Ground Modelling)
+    \item Methoden auf Basis benachbarter Punkte und lokaler Merkmale
+    \item Verfahren höherer Ordnung (Higher-Order Inference)
+    \item Lernbasierte Verfahren (Deep Learning)
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{Bilder/boden_taxonomie.png}
+  \caption{Klassifizierung und Systematisierung bestehender Bodensegmentierungsmethoden}
+  \label{fig:boden_taxonomie}
+\end{figure}
+
+
+Diese Klassifikation deckt sowohl klassische geometrische Ansätze als auch moderne, neuronale Verfahren ab. 
+Im Folgenden werden die wichtigsten Prinzipien und repräsentativen Algorithmen jeder Kategorie erläutert.
+
+\subsection{2.5D-Gitterbasierte Verfahren}
+% ============================
+
+Ein verbreiteter Ansatz zur Bodensegmentierung besteht darin, die dreidimensionale Punktwolke in eine zweidimensionale Rasterdarstellung zu überführen.  
+Dabei werden die Punkte nach ihren Koordinaten in diskrete Zellen eingeteilt, sodass jede Zelle statistische Höheninformationen über die in ihr enthaltenen Punkte speichert.  
+Dieser sogenannte 2.5D-Ansatz reduziert die Komplexität der Verarbeitung erheblich, da die Analyse nicht mehr im vollen 3D-Raum, sondern auf einer strukturierten Gitterebene erfolgt.
+
+Douillard et al.~\cite{douillard2011segmentation} präsentieren ein solches Verfahren auf Basis von \textit{Elevation Maps}, bei dem jede Gitterzelle durch den Mittelwert der Höhenwerte ihrer Punkte beschrieben wird.  
+Zellen mit geringer Höhenvarianz werden als Boden klassifiziert, während größere Abweichungen auf Objekte oder Hindernisse hinweisen.  
+Durch diese Reduktion auf lokale Höhenstatistiken kann die Methode Bodenflächen effizient und robust in urbanen Umgebungen identifizieren, ohne den gesamten Punktwolkenraum verarbeiten zu müssen.
+
+
+% ============================
+\subsection{Bodenmodellierung (Ground Modelling)}
+% ============================
+
+Diese Methoden approximieren die Bodenfläche durch mathematische Modelle, typischerweise in Form von Ebenen oder Linien, um die Trennung zwischen Boden- und Nichtbodenpunkten zu ermöglichen.
+
+\textbf{Plane Fitting:}  
+In \cite{hu2013robust} wird die Identifikation von Bodenpunkten mithilfe der \textit{Random Sample Consensus (\ac{RANSAC})}-Methode beschrieben, 
+bei der eine Ebene an die niedrigsten Punkte angepasst und Punkte mit geringem orthogonalen Abstand als \textit{Inlier} klassifiziert werden.  
+Ein ähnlicher Ansatz teilt die Punktwolke in konzentrische Zonen auf und passt für jede Zone lokal angepasste Ebenen an, 
+wobei die \textit{Principal Component Analysis (PCA)} eingesetzt wird, um die Hauptrichtung der Punktverteilung zu bestimmen und daraus die bestmögliche Ebenenorientierung zu berechnen \cite{lim2020fast}.  
+Dieser Ansatz erreicht eine hohe Präzision (F1-Score $\approx 0.93$) bei gleichzeitigem Echtzeitverhalten.
+
+\textbf{Linienextraktion:}
+Ein auf lokalen Linienanpassungen basierendes Verfahren modelliert die entlang eines Laserstrahls erfassten Punkte als nahezu linearen Verlauf \cite{himmelsbach2010fast}.
+Dieses Verfahren ist recheneffizient und eignet sich für Echtzeitverarbeitung, weist jedoch Schwächen in stark unebenem oder komplexem Gelände auf.
+
+\textbf{Gaussian Process Regression (GPR):}  
+Die \textit{Gaussian Process Regression (GPR)} wurde zur Modellierung der Bodenhöhe eingeführt, 
+wobei der Höhenverlauf als kontinuierliche Funktion mit zugehöriger Unsicherheitsabschätzung beschrieben wird \cite{douillard2011segmentation}.  
+Durch die Verwendung nichtstationärer Kovarianzfunktionen kann sich das Modell lokal an unterschiedliche Geländestrukturen anpassen und dadurch eine hohe Genauigkeit auch in unregelmäßigem Terrain erreichen \cite{chen2014real}.
+
+% ============================
+\subsection{Benachbarte Punkte und lokale Merkmale}
+% ============================
+
+Diese Algorithmen analysieren geometrische Beziehungen zwischen benachbarten Punkten in der Punktwolke.  
+Dabei wird häufig die vertikale Kanalstruktur moderner \ac{LiDAR}-Sensoren (z.\,B. Velodyne VLP-16 oder Ouster \ac{OS1}-64) ausgenutzt, um lokale Abhängigkeiten entlang der Scanlinien zu erkennen.
+
+\textbf{Kanalbasierte Verfahren:}  
+In \cite{chu2019ground} wird die Bodenextraktion entlang vertikaler Scans beschrieben, 
+bei der lokale Höhenunterschiede und Gradienten ausgewertet werden.  
+Punkte zwischen einem Startbodenpunkt und einem definierten Schwellenwert werden als Boden klassifiziert.  
+Das Verfahren ist recheneffizient, reagiert jedoch empfindlich auf eine ungenaue Parametrierung, etwa bei der Wahl des Höhen- oder Gradientschwellenwerts.
+
+\textbf{Region-Growing und Clustering:}  
+In \cite{moosmann2009segmentation} wird ein graphenbasiertes Region-Growing-Verfahren vorgestellt, 
+bei dem benachbarte Punkte iterativ zu Regionen zusammengefügt werden, 
+sofern lokale geometrische Kriterien (z.\,B. Konvexität) erfüllt sind.  
+Ein alternativer Ansatz kombiniert voxelbasiertes Clustering mit statistischer Analyse, 
+um Bodencluster zuverlässig zu isolieren \cite{douillard2011segmentation}.  
+Solche Methoden liefern stabile Ergebnisse auch in komplexen Szenen, 
+sind jedoch rechenintensiver und daher weniger für Echtzeitanwendungen geeignet.
+
+\textbf{Range-Image-Methoden:}  
+In \cite{bogoslavskyi2016fast} wird die Punktwolke in ein zweidimensionales Entfernungsbild (\textit{Range Image}) projiziert, 
+bei dem jeder Pixel den Abstand eines Messpunkts zum Sensor repräsentiert.  
+Diese Repräsentation ermöglicht eine effiziente Definition von Nachbarschaften und vereinfacht die anschließende Segmentierung erheblich.  
+Mit diesem Ansatz kann die Bodenextraktion in wenigen Millisekunden pro Frame durchgeführt werden, was eine Echtzeitverarbeitung erlaubt.
+
+% ============================
+\subsection{Verfahren höherer Ordnung}
+% ============================
+
+Ansätze dieser Kategorie verwenden probabilistische Graphmodelle wie 
+\textit{Markov Random Fields (MRF)} oder \textit{Conditional Random Fields (CRF)}, 
+um Abhängigkeiten zwischen benachbarten Punkten explizit zu modellieren.  
+Durch die Berücksichtigung solcher räumlicher Korrelationen können Fehlklassifikationen, 
+insbesondere in spärlichen oder verrauschten Punktwolken, deutlich reduziert werden.
+
+In \cite{guo2011ground} wird ein MRF-Modell mit dem \textit{Belief Propagation (BP)}-Verfahren kombiniert, 
+das die Wahrscheinlichkeiten einzelner Punktzuordnungen iterativ aktualisiert, 
+um eine konsistente Bodenfläche auch in unebenem Gelände zu rekonstruieren.  
+Ein weiterentwickelter Ansatz integriert zeitliche Abhängigkeiten in ein CRF-Modell, 
+wodurch die Konsistenz zwischen aufeinanderfolgenden Frames verbessert 
+und die Stabilität der Segmentierung bei Bewegungen erhöht wird \cite{rummelhard2015temporal}.
+
+% ============================
+\subsection{Lernbasierte Verfahren}
+% ============================
+
+In den letzten Jahren haben sich tief neuronale Netze als besonders leistungsfähige Ansätze für die Punktwolkensegmentierung etabliert.  
+Je nach Architektur werden die Sensordaten entweder direkt in Punktform verarbeitet oder zuvor in strukturierte Darstellungen überführt, um eine effiziente Merkmalsextraktion zu ermöglichen.
+
+\textbf{PointNet- und Voxel-basierte Modelle:}  
+Das in \cite{qi2017pointnet} vorgestellte PointNet-Framework ermöglicht die direkte Verarbeitung unstrukturierter Punktwolken, indem es für jeden Punkt Merkmale extrahiert und diese global aggregiert.  
+Zur Erfassung lokaler geometrischer Abhängigkeiten wurde das Konzept in PointNet++ erweitert.  
+Alternativ unterteilen voxelbasierte Verfahren wie VoxelNet \cite{zhou2018voxelnet} oder PointPillars \cite{lang2019pointpillars} die Punktwolke in diskrete 3D-Zellen (Voxel) bzw. Säulen und verwenden dreidimensionale Faltungsnetzwerke (3D-CNNs) zur Merkmalsanalyse.  
+
+\textbf{Bildbasierte Ansätze:}  
+In \cite{wu2018squeezeseg} und \cite{milioto2019rangenet++} werden Punktwolken in zweidimensionale Entfernungsbilder (\textit{Range Images}) projiziert, sodass konventionelle 2D-Faltungsnetzwerke auf \ac{LiDAR}-Daten angewendet werden können.  
+Diese Repräsentation ermöglicht eine Echtzeitverarbeitung auf GPUs bei gleichzeitig hoher Segmentierungsgenauigkeit.  
+
+\textbf{Spezialisierte Netze für Bodensegmentierung:}  
+Ein speziell für die Bodenerkennung entwickeltes neuronales Modell ist GndNet \cite{paigwar2020gndnet}.  
+Das Netz basiert auf einem zweidimensionalen Gittermodell, in dem für jede Zelle die Bodenhöhe vorhergesagt wird.  
+Dieses Verfahren erreicht eine mittlere Intersection-over-Union (\ac{IoU}) von 83,6\,\% bei einer Laufzeit von nur 17,9\,ms pro Frame und ist somit für Echtzeitanwendungen geeignet.
+
+% ============================
+\subsection{Zusammenfassung}
+% ============================
+
+Tabelle~\ref{tab:vergleich_bodenmethoden} fasst die wesentlichen Eigenschaften der vorgestellten Bodensegmentierungsmethoden zusammen.
+Sie verdeutlicht die jeweiligen Stärken und Grenzen der Ansätze sowie ihre typischen Einsatzgebiete in der mobilen Robotik und Umfelderkennung.
+
+\begin{table}[H]
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{3.5cm}|p{4cm}|p{4cm}|p{3cm}|}
+\hline
+\textbf{Methodenkategorie} & \textbf{Vorteile} & \textbf{Nachteile} & \textbf{Typisches Einsatzgebiet} \\ \hline
+2.5D-Gitterbasierte Verfahren & Geringe Rechenlast, robust auf ebenem Gelände & Begrenzte Genauigkeit bei Überhängen oder Brücken & Stadt- und Straßenszenarien \\ \hline
+Bodenmodellierung & Hohe Präzision, einfache mathematische Umsetzung & Geringe Robustheit bei komplexen Oberflächenformen & Flaches bis leicht geneigtes Terrain \\ \hline
+Lokale Merkmalsanalyse & Unempfindlich gegenüber Dichteänderungen & Starke Abhängigkeit von Parameterwahl und Sensorgeometrie & Dynamische oder unstrukturierte Umgebungen \\ \hline
+Probabilistische Graphmodelle (MRF/CRF) & Hohe Konsistenz durch Nachbarschaftsbeziehungen & Hohe Rechenkomplexität, geringe Echtzeitfähigkeit & Forschungs- und Entwicklungsumgebungen \\ \hline
+Lernbasierte Verfahren & Sehr hohe Genauigkeit, anpassungsfähig durch Training & Großer Trainings- und Hardwareaufwand & Autonomes Fahren, Echtzeit-Perzeption \\ \hline
+\end{tabular}
+\caption{Vergleich der Bodensegmentierungsmethoden in Bezug auf Rechenaufwand, Robustheit und Einsatzgebiet (nach~\cite{gomes2023survey}).}
+\label{tab:vergleich_bodenmethoden}
+\end{table}
+
+\begin{table}[h!]
+  \centering
+  \renewcommand{\arraystretch}{1.2}
+  \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|l|c|c|c|c|}
+      \hline
+      \textbf{Methode} & \textbf{Echtzeitfähigkeit} & \textbf{Robustheit} & \textbf{Genauigkeit} & \textbf{Rechenaufwand} \\
+      \hline
+      2.5D-Gitterbasierte Verfahren & Hoch (Zellstatistiken pro Raster) & Mittel (stabil bei moderaten Höhenänderungen) & Mittel (verlustbehaftete 2.5D-Projektion) & Gering \\ \hline
+      \ac{RANSAC}-Ebenenanpassung (Plane Fitting) & Mittel (Iterationsbudget begrenzt Laufzeit) & Hoch (ausreißerresistent) & Hoch (präzise Ebenenmodellierung) & Mittel bis hoch \\ \hline
+      Linienextraktion entlang Scanlinien & Hoch (lineare Fits pro Strahl) & Niedrig bis mittel (empfindlich auf unebenes Gelände) & Mittel & Sehr gering \\ \hline
+      Gaussian Process Regression (GPR) & Niedrig (aufwändige Kernelberechnung) & Hoch (passt sich lokalem Terrain an) & Hoch & Hoch \\ \hline
+      Kanalbasierte Verfahren (gradientenbasiert) & Hoch (schlanke Schwellenwertlogik) & Mittel (parametergängig, sensorgeometrieabhängig) & Mittel & Gering \\ \hline
+      Region-Growing / graphenbasiertes Clustering & Niedrig bis mittel (iterative Nachbarschaftsprüfung) & Mittel bis hoch (reduziert Fehlklassifikationen) & Hoch & Mittel bis hoch \\ \hline
+      Range-Image-Methoden & Hoch (2D-Nachbarschaften in Millisekunden) & Mittel (robust gegen Rauschen, sensibel bei Überhängen) & Mittel bis hoch & Gering bis mittel \\ \hline
+      Probabilistische Graphmodelle (MRF/CRF) & Niedrig (iterative Inferenz) & Hoch (konsistente Nachbarschaftsmodellierung) & Hoch & Hoch \\ \hline
+      Point-/Voxel-basierte Netze (PointNet, PointPillars) & Mittel (GPU-Echtzeit bei optimierter Implementierung) & Hoch (lernbasierte Generalisierung) & Sehr hoch & Hoch \\ \hline
+      Bildbasierte CNNs auf Range Images (z.B. RangeNet++) & Hoch (2D-CNN-Inferenz auf GPU) & Mittel bis hoch (robust auf strukturierten Projektionen) & Hoch & Mittel bis hoch \\ \hline
+      Spezialisierte Netze (GndNet) & Hoch (Inference $\approx$ 18\,ms/Frame) & Mittel bis hoch (geländeadaptiv trainierbar) & Hoch (\ac{IoU} $\approx$ 84\,\%) & Mittel \\ \hline
+    \end{tabular}%
+  }
+  \caption{Vergleich der in Abschnitt~\ref{chap:bodenmethoden} beschriebenen Bodensegmentierungsmethoden nach Echtzeitfähigkeit, Robustheit, Genauigkeit und Rechenaufwand (nach~\cite{gomes2023survey}).}
+  \label{tab:boden-methodenvergleich-ransac}
+\end{table}
+
+\section{RANSAC-Verfahren}
+\label{sec:ransac_verfahren}
+
+Das \textit{Random Sample Consensus} (\ac{RANSAC}) bietet eine robuste Ebenenabschätzung, indem es Ausreißer konsequent ignoriert und lediglich Punkte berücksichtigt, die innerhalb eines orthogonalen Abstands zur Modellhypothese liegen.
+Im Unterschied zu raster- oder morphologiebasierten Ansätzen entsteht so eine präzise Modellierung auch bei schrägen oder partiell verdeckten Fahrbahnen, zu Lasten eines moderaten Iterationsaufwands und einer sorgfältigen Schwellenwertwahl.
+Aufgrund dieses Gleichgewichts zwischen Genauigkeit und Implementierungskomplexität dient \ac{RANSAC} in dieser Arbeit als Grundlage der Bodensegmentierung.
+
+Das Verfahren wiederholt folgende Schritte, bis entweder das Iterationsbudget ausgeschöpft ist oder ein Modell die gewünschte Sicherheit erreicht:
+\begin{enumerate}
+  \item \textbf{Stichprobenbildung:} Aus der Punktwolke werden minimal viele Punkte (\(n=3\) für Ebenen) zufällig gewählt, um einen ersten Ebenenvorschlag zu erzeugen.
+  \item \textbf{Modellhypothese:} Aus den Stichprobenpunkten wird eine Ebenengleichung \(a x + b y + c z + d = 0\) berechnet, die Normalenrichtung und Lage der Fahrbahn repräsentiert.
+  \item \textbf{Inlier-Prüfung:} Jeder Punkt wird über seinen orthogonalen Abstand
+    \[\mathrm{dist}(\mathbf{p}, \Pi) = \frac{|a x + b y + c z + d|}{\sqrt{a^2 + b^2 + c^2}}\]
+    zum Ebenenmodell bewertet. Punkte unterhalb des Schwellenwerts \texttt{distance\_threshold} gelten als Inlier.
+  \item \textbf{Bewertung und Wiederholung:} Die Hypothese mit den meisten Inliern wird gemerkt; anschließend werden neue Stichproben gezogen, bis die gewünschte Erfolgswahrscheinlichkeit erreicht ist. Aus dem Verhältnis von Inlier-Anteil \(w\) und Maximaliterationen \(k\) ergibt sich \(1-(1-w^n)^k\) als Wahrscheinlichkeit, mindestens eine ausreißerfreie Stichprobe gesehen zu haben.
+\end{enumerate}
+Die resultierende Ebene trennt Boden- von Hindernispunkten durch ihre senkrechte Distanz. Der iterative Stichprobencharakter geht auf den ursprünglichen \ac{RANSAC}-Vorschlag von Fischler und Bolles zurück, der explizit eine robuste Parameterschätzung bei hohem Ausreißeranteil adressiert \parencite{fischler1981ransac}. Für Punktwolken und Ebenenextraktion wurde das Verfahren unter anderem von Schnabel et~al. für große 3D-Datensätze adaptiert \parencite{Schnabel2007Efficient}. Abbildung~\ref{fig:plane_fitting} zeigt die geometrische Interpretation dieser Distanzklassifizierung nach \textcite{gomes2023survey}.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{Bilder/plane_fitting.png}
+  \caption{Visuelle Darstellung einer orthogonalen Distanzklassifizierung (~\cite{gomes2023survey})}
+  \label{fig:plane_fitting}
+\end{figure}
+
+\section{Implementierung}
+
+\label{sec:implementierung_ransac}
+
+Die Bodensegmentierung wurde als eigenständiger \ac{ROS}~2-Knoten in \texttt{C++} mit der \textit{Point Cloud Library (\ac{PCL})} implementiert. 
+Der Knoten \texttt{ransac\_ground\_node} abonniert gefilterte \ac{LiDAR}-Punktwolken, schätzt eine Bodenebene mittels \textit{SAC-\ac{RANSAC}} und veröffentlicht eine Hindernis-Punktwolke, aus der die Bodenpunkte entfernt wurden. 
+Die Architektur ist strikt streaming-orientiert (Callback-basiert) und verzichtet auf Blockierungen, wodurch eine niedrige Latenz erzielt wird.
+
+Der Knoten deklariert die Ein- und Ausgabetopics als Parameter und nutzt \texttt{SensorDataQoS}:
+\begin{itemize}
+  \item \textbf{Eingabe (\texttt{input\_topic})}: \texttt{/points\_voxel} \ \emph{(Typ: \texttt{sensor\_msgs/PointCloud2})}, enthält bereits per VoxelGrid ausgedünnte Punkte (\texttt{pcl::PointXYZI}).
+  \item \textbf{Ausgabe (\texttt{output\_topic})}: \texttt{/obstacle\_points} \ \emph{(Typ: \texttt{sensor\_msgs/PointCloud2})}, enthält ausschließlich Nicht-Boden-Punkte.
+\end{itemize}
+Leere Eingaben werden verworfen, um unnötige Rechenarbeit zu vermeiden.
+
+Die wesentlichen Laufzeitparameter werden als \ac{ROS}-Parameter deklariert und können über Launch-Dateien oder \texttt{ros2 param} angepasst werden (Default-Werte aus dem Code):
+\begin{table}[h!]
+\centering
+\begin{tabular}{|l|c|l|}
+\hline
+\textbf{Parameter} & \textbf{Default} & \textbf{Bedeutung} \\ \hline
+\texttt{input\_topic} & \texttt{/points\_voxel} & Eingangs-Punktwolke (vorsegmentiert per VoxelGrid) \\ \hline
+\texttt{output\_topic} & \texttt{/obstacle\_points} & Ausgabe ohne Bodenpunkte \\ \hline
+\texttt{distance\_threshold} & $0{,}15\,\mathrm{m}$ & maximaler Punkt-zu-Ebene-Abstand für Inlier \\ \hline
+\texttt{max\_iterations} & $1000$ & maximale \ac{RANSAC}-Iterationen \\ \hline
+\end{tabular}
+\caption{\ac{RANSAC}-Parametrisierung des \texttt{ransac\_ground\_node}.}
+\label{tab:ransac_params}
+\end{table}
+
+Zur Ebenenschätzung wird \texttt{pcl::SACSegmentation} mit \texttt{SACMODEL\_PLANE} und \texttt{SAC\_RANSAC} verwendet, inkl.\ Koeffizientenoptimierung:
+\begin{enumerate}
+  \item \textbf{Konvertierung}: \texttt{sensor\_msgs/PointCloud2} $\rightarrow$ \texttt{pcl::PointCloud<pcl::PointXYZI>}.
+  \item \textbf{\ac{RANSAC}-Konfiguration}: \texttt{setOptimizeCoefficients(true)}, \texttt{setModelType(PLANE)}, \texttt{setMethodType(\ac{RANSAC})}, \texttt{setDistanceThreshold}, \texttt{setMaxIterations}.
+  \item \textbf{Segmentierung}: \texttt{seg.segment(inliers, coefficients)} liefert Inlier-Indizes der Bodenpunkte und Ebenenparameter $\mathbf{n}=(a,b,c)$, $d$ der Ebene
+  \[
+    a x + b y + c z + d = 0.
+  \]
+  \item \textbf{Extraktion der Hindernisse}: \texttt{pcl::ExtractIndices} mit \texttt{setNegative(true)} filtert alle Punkte \emph{außerhalb} der Bodenenebene (\,$>$ \texttt{distance\_threshold}\,).
+  \item \textbf{Publikation}: Rückkonvertierung nach \texttt{PointCloud2} und Veröffentlichung auf \texttt{/obstacle\_points} (mit ursprünglichem Header/Frame).
+\end{enumerate}
+Ein Punkt $\mathbf{p}=(x,y,z)^\top$ zählt als Inlier, wenn sein orthogonaler Abstand zur Ebene
+\[
+  \mathrm{dist}(\mathbf{p}, \Pi) \;=\; \frac{|a x + b y + c z + d|}{\sqrt{a^2+b^2+c^2}}
+\]
+kleiner gleich \texttt{distance\_threshold} ist.
+
+\section{Ergebnis}
+Als Ergebnis ergibt sich eine Punktwolke, die frei von Bodenpunkten ist (siehe Abbildung~\ref{fig:ransac_compare}). 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{Bilder/ransac_compare.png}
+  \caption{Vergleich der ursprünglichen Punktwolke (links) und der nach dem \ac{RANSAC}-Algorithmus gefilterten Punktwolke (rechts) (2025-10-15-Messdaten/2025-10-15-VK-OL-005)}
+  \label{fig:ransac_compare}
+\end{figure}

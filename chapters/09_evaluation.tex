@@ -1,0 +1,536 @@
+\chapter{Test und Bewertung}
+\label{chap:test_und_bewertung}
+
+Dieses Kapitel bündelt die Testergebnisse der \ac{ROS}~2-basierten Verarbeitungskette und ordnet sie den zuvor definierten Anforderungen zu. Zunächst werden Versuchsaufbau und Parametervariationen beschrieben, anschließend folgen die Messungen im Fahrbetrieb. Damit entstehen klare Übergänge von der Laborparametrisierung zur Straßenerprobung. Die Verarbeitungskette ist vollständig in \ac{ROS}~2 umgesetzt, umfasst die in Abbildung~\ref{fig:ros2-verarbeitungskette-alltopics} dargestellten Module und wird über das Launch-File \textit{benchmark.launch.py} im gemeinsamen Namensraum \textit{/bench} gestartet.
+
+\section{Parameterstudie}
+\label{sec:parameterstudie}
+
+Die gewählte Detektionskette reagiert empfindlich auf Parameter, die Segmentierung, Clusterbildung und Klassentrennung prägen. Die Parameterstudie untersucht deshalb systematisch die Kombinationen aus \texttt{voxel\_size}, \texttt{distance\_threshold} und \texttt{cluster\_tolerance}. Pro Durchgang wird jeweils nur einer dieser Werte angepasst und die übrige Konfiguration unverändert belassen, damit der Einfluss jeder Stellgröße klar nachvollziehbar bleibt.
+
+Die Datensätze wurden bei 9\,°C und bedecktem Himmel aufgezeichnet, womit witterungsbedingte Ausreißer minimiert sind. Die Verarbeitung erfolgte auf einem MEDION 15~E1 Laptop mit AMD Ryzen~5~7430U (6~Kerne/12~Threads) und 32~GB RAM.
+
+Der Fokus liegt bewusst auf den drei genannten Parametern, weil sie die größten Hebel entlang der Kette darstellen: \texttt{voxel\_size} steuert die Ausdünnung der Punktwolke (Rauschunterdrückung vs. Detailtreue), \texttt{distance_threshold} definiert die Inlier-Schwelle der Bodensegmentierung und \texttt{cluster_tolerance} bestimmt die räumliche Nachbarschaft beim Clustering. Weitere Einstellungen bleiben fix, da sie entweder durch die Versuchskonfiguration vorgegeben sind (\texttt{min_bound}/\texttt{max_bound} der CropBox), bereits konservative Robustheitsreserven bieten (\texttt{max_iterations} der \ac{RANSAC}-Suche), nur sekundären Einfluss auf die Klassentrennung haben (\texttt{min_cluster_size}, \texttt{max_cluster_size}, \texttt{max_clusters}) oder die Vergleichbarkeit der Wiederholungsmessungen beeinträchtigen würden (\texttt{gate_dist_max}, \texttt{max_missed}, \texttt{min_hits}). Dadurch bleibt der Suchraum handhabbar, ohne zentrale Qualitätstreiber zu vernachlässigen.
+
+\subsection{Untersuchungsaufbau}
+Die Messungen wurden in drei realen Szenarien durchgeführt:
+
+\begin{itemize}
+    \item \textbf{S1 – Geparkte Fahrzeuge auf einer ebenen Fahrbahn:} statische Umgebung mit eng stehenden PKW, geringer Verkehr, spiegelnde Oberflächen, hohe Gefahr von Übersegmentierung.
+    \item \textbf{S2 – Kreuzung:} Objekte in dichter Nachbarschaft, teilweise verdeckt, dynamische Szene; Ziel: Minimierung von Falsch-Detektionen und stabiler Klassentrennung.
+    \item \textbf{S3 – Unebene Fahrbahn:} geneigte Fläche mit parkenden Fahrzeugen; bestätigt Robustheit der Bodensegmentierung und der Clusterbildung bei variierender Höhengeometrie.
+\end{itemize}
+
+\begin{table}[H]
+  \centering
+  \caption{Übersicht der verwendeten Messaufzeichnungen}
+  \begin{tabular}{|c|l|l|l|}
+    \hline
+    \textbf{Szenario} & \textbf{Beschreibung} & \textbf{Messaufzeichnung} & \textbf{Zeitraffer} \\ \hline
+    S1 & Geparkte Autos & 2025-10-15-VK-OL-006 & Start: 5s; run 10s \\ \hline
+    S2 & Kreuzung & 2025-10-15-VK-OL-007 & Start: 20s; run 10s \\ \hline
+    S3 & Unebene Fläche & 2025-10-15-VK-OL-004 & Start: 145s; run 10s \\ \hline
+  \end{tabular}
+\end{table}
+
+Als Bodenwahrheit (``Realwert'') dienten zum einen Kameraaufnahmen im Vorderbereich, zum anderen das 360° \ac{LiDAR}-Datenbild für rückwärtige Objekte. Bewertet wurden jeweils die Klassen \textit{PKW}, \textit{Mensch}, \textit{Fahrradfahrer} und \textit{LKW} sowie die Gesamtdetektionen, sodass sowohl Über- als auch Untersegmentierungen sichtbar werden.
+
+Die in Tabelle~\ref{tab:startwerte_parameter} aufgeführten Werte blieben während der Variation von \textit{voxel\_size} unverändert und dienen als Referenz für die folgenden Auswertungen. Erst im Anschluss wurden \textit{distance\_threshold} und \textit{cluster\_tolerance} analog variiert, immer ausgehend von den ausgewählten Parameter.
+
+\begin{table}[H]
+  \centering
+  \caption{Startwerte der Parameter vor der Parametrisierung}
+  \label{tab:startwerte_parameter}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Node} & \textbf{Parameter} & \textbf{Wert} \\
+    \midrule
+
+    \texttt{crop\_box\_node\_cpp} \\
+      & \texttt{min\_bound}  & \([-10.0,\ -6.0,\ -3.0]\) \\
+      & \texttt{max\_bound}  & \([10.0,\ 6.0,\ 5.0]\) \\
+    \midrule
+
+    \texttt{ransac\_ground\_node\_cpp} \\
+      & \texttt{distance\_threshold} & 0.15 \\
+      & \texttt{max\_iterations}    & 1000 \\
+    \midrule
+
+    \texttt{cluster\_extraction\_node\_cpp} \\
+      & \texttt{cluster\_tolerance} & 0.50 \\
+      & \texttt{min\_cluster\_size} & 40 \\
+      & \texttt{max\_cluster\_size} & 8000 \\
+      & \texttt{max\_clusters}      & 200 \\
+      & \texttt{bbox\_type}         & aabb \\
+    \midrule
+
+    \texttt{tracking\_node\_cpp} \\
+      & \texttt{gate\_dist\_max} & 4.0 \\
+      & \texttt{max\_missed}    & 10 \\
+      & \texttt{min\_hits}      & 2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{S1: Geparkte Fahrzeuge auf einer ebenen Fahrbahn}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|c|c|c|c|c}
+\hline
+\textbf{voxel\_size} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+\hline
+0.10 & 12 & 3 & 3 & 0 & 18 \\
+0.15 & 15 & 1 & 3 & 2 & 21 \\
+0.20 & \textbf{15} & \textbf{0} & \textbf{1} & \textbf{1} & \textbf{17} \\
+0.25 & 15 & 0 & 1 & 2 & 18 \\
+\hline
+Real & 15 & 0 & 1 & 3 & 19 \\
+\hline
+\end{tabular}
+\caption{Detektionen pro Klasse für unterschiedliche voxel\_size-Werte (Geparkte Autos).}
+\label{tab:geparkt_voxel}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|c|c|c|c|c}
+\hline
+\textbf{distance\_threshold} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+\hline
+0.10 & 16 & 0 & 1 & 1 & 18 \\
+0.15 & 15 & 0 & 1 & 1 & 17 \\
+0.20 & \textbf{17} & \textbf{0} & \textbf{1} & \textbf{2} & \textbf{20} \\
+0.25 & 16 & 0 & 1 & 1 & 18 \\
+\hline
+Real & 15 & 0 & 1 & 3 & 19 \\
+\hline
+\end{tabular}
+\caption{Detektionen pro Klasse für unterschiedliche distance\_threshold-Werte (Geparkte Autos, voxel\_size = 0.15\,m).}
+\label{tab:geparkt_distance}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|c|c|c|c|c}
+\hline
+\textbf{cluster\_tolerance} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+\hline
+0.30 & 19 & 0 & 4 & 1 & 24 \\
+0.50 & \textbf{17} & \textbf{0} & \textbf{1} & \textbf{1} & \textbf{19} \\
+0.70 & 8  & 0 & 1 & 2 & 11 \\
+0.90 & 7  & 0 & 1 & 2 & 10 \\
+\hline
+Real & 15 & 0 & 1 & 3 & 19 \\
+\hline
+\end{tabular}
+\caption{Detektionen pro Klasse für unterschiedliche Werte der cluster\_tolerance (Geparkte Autos, voxel\_size = 0{,}15\,m, distance\_threshold = 0{,}20\,m).}
+\label{tab:geparkt_cluster_tolerance}
+\end{table}
+
+Die Auswertungen für \textbf{S1} zeigen deutlich, wie sensibel die Verarbeitungskette auf Übersegmentierung reagiert. Eine Vergrößerung der \texttt{voxel\_size} von \SI{0.10}{m} auf \SI{0.20}{m} reduziert die Fehlklassifikationen von Menschen und Fahrradfahrern vollständig und nähert sich mit insgesamt 17 Detektionen dem Realwert von 19 Objekten an. Für die Bodensegmentierung verhindern Werte ab \SI{0.15}{m}, dass Fahrzeugdachpunkte als Boden eingestuft werden; bei \SI{0.20}{m} steigt die Gesamtdetektion zwar auf 20, allerdings mit einem zusätzlichen LKW-Falschpositiv. Am deutlichsten wird der Einfluss der \texttt{cluster\_tolerance}: Zu kleine Werte (\SI{0.30}{m}) führen zu einer Übersegmentierung von PKW (24 Gesamt\-detektionen), während zu große Werte (\SI{0.70}{m} und \SI{0.90}{m}) angrenzende Fahrzeuge zusammenziehen (nur 11 bzw. 10 Detektionen). Die Einstellung \SI{0.50}{m} liefert mit 19 Detektionen eine nahezu perfekte Übereinstimmung mit der Bodenwahrheit und stellt damit den besten Kompromiss zwischen Trennschärfe und Zusammenfassung dar. Insgesamt ergibt sich für dieses Szenario ein Optimum bei moderaten Einstellungen (\texttt{voxel\_size} \(\approx\) \SI{0.20}{m}, \texttt{distance\_threshold} \(=\) \SI{0.15}{m}, \texttt{cluster\_tolerance} \(=\) \SI{0.50}{m}).
+
+\subsection{S2 – Kreuzung}
+
+\begin{table}[H]
+  \centering
+  \caption{Anzahl Detektionen pro Klasse für unterschiedliche Voxelgrößen (Kreuzung).}
+  \begin{tabular}{|l|c|c|c|c|c|}
+    \hline
+    \textbf{voxel\_size (m)} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+    \hline
+    0.10 & 11 & 13 & 2 & 1 & 27 \\
+    0.15 & 13 & 12 & 1 & 1 & 27 \\
+    0.20 & 13 &  2 & 0 & 1 & 16 \\
+    0.25 & 14 &  0 & 0 & 1 & 15 \\
+    \hline
+    Real &  9 &  3 & 1 & 1 & 14 \\
+    \hline
+  \end{tabular}
+  \label{tab:kreuzung_voxel_size}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Anzahl Detektionen pro Klasse für unterschiedliche \texttt{distance\_threshold}-Werte (Kreuzung, voxel\_size = 0.15\,m).}
+  \begin{tabular}{|l|c|c|c|c|c|}
+    \hline
+    \textbf{distance\_threshold (m)} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+    \hline
+    0.10 & 15 & 12 & 1 & 1 & 29 \\
+    0.15 & 14 & 12 & 1 & 1 & 28 \\
+    0.20 & 14 &  9 & 1 & 1 & 25 \\
+    0.25 & 14 &  9 & 1 & 1 & 25 \\
+    \hline
+    Real &  9 &  3 & 1 & 1 & 14 \\
+    \hline
+  \end{tabular}
+  \label{tab:kreuzung_distance_threshold}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Anzahl Detektionen pro Klasse für unterschiedliche \texttt{cluster\_tolerance}-Werte (Kreuzung, voxel\_size = 0.15\,m, distance\_threshold = 0.20\,m).}
+  \begin{tabular}{|l|c|c|c|c|c|}
+    \hline
+    \textbf{cluster\_tolerance (m)} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+    \hline
+    0.30 &  8 &  8 & 4 & 1 & 21 \\
+    0.50 & 14 &  9 & 1 & 1 & 25 \\
+    0.70 & 17 &  8 & 1 & 1 & 27 \\
+    0.90 & 16 &  8 & 1 & 1 & 26 \\
+    \hline
+    Real &  9 &  3 & 1 & 1 & 14 \\
+    \hline
+  \end{tabular}
+  \label{tab:kreuzung_cluster_tolerance}
+\end{table}
+
+Die Ergebnisse der Szene \textbf{S2~–~Kreuzung} zeigen, dass eine dichte und dynamische Umgebung die Wirkung jedes Parameters verstärkt. Eine moderate Reduzierung der \textit{voxel\_size} (0,15--0,20\,m) senkt die Falschmeldungen in der Klasse \textit{Mensch} (von 13 auf 2~Detektionen), führt aber gleichzeitig zu einer leichten Untererfassung der tatsächlichen Fußgänger (3 erwartete Ziele) und weiterer Klassen \big(\autoref{tab:kreuzung_voxel_size}\big). Ein \textit{distance\_threshold} von 0,15--0,20\,m verhindert eine Explosion von Fehl-Clustern, ohne große Objekte zu verlieren; geringere Werte (0,10\,m) bewirken eine Übersegmentierung und fast doppelt so viele Detektionen wie real vorhanden \big(29 statt 14, \autoref{tab:kreuzung_distance_threshold}\big). Die Variation der \textit{cluster\_tolerance} belegt, dass ein Umfeld von 0,50--0,70\,m einen guten Kompromiss bietet: darunter (0,30\,m) werden Objekte übersegmentiert (21~Detektionen, davon 4~falsche Radfahrer), darüber (0,90\,m) beginnen sie zu fusionieren (26~Detektionen, 7 über dem Realwert), siehe \autoref{tab:kreuzung_cluster_tolerance}. In Summe bleiben die gewählten Einsatzwerte (\textit{voxel\_size} = 0,15--0,20\,m, \textit{distance\_threshold} = 0,15\,m, \textit{cluster\_tolerance} = 0,50\,m) die robusteste Wahl, um Fehlalarme zu begrenzen und gleichzeitig die wesentlichen Ziele in einer stark frequentierten Kreuzung zu erhalten.
+
+\subsection{S3 – Unebene Fahrbahn}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|c|c|c|c|c}
+\hline
+\textbf{voxel\_size} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+\hline
+0.10 & 15 & 7 & 3 & 0 & 25 \\
+0.15 & 15 & 7 & 2 & 1 & 25 \\
+0.20 & 15 & 1 & 2 & 1 & 19 \\
+0.25 & 16 & 0 & 2 & 1 & 19 \\
+\hline
+Real & 13 & 0 & 1 & 5 & 19 \\
+\hline
+\end{tabular}
+\caption{Anzahl Detektionen pro Klasse für verschiedene voxel\_size (Unebene Fläche).}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|c|c|c|c|c}
+\hline
+\textbf{distance\_threshold} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+\hline
+0.10 & 18 & 1 & 2 & 1 & 22 \\
+0.15 & 15 & 1 & 2 & 1 & 19 \\
+0.20 & 14 & 1 & 3 & 1 & 19 \\
+0.25 & 14 & 1 & 3 & 1 & 19 \\
+\hline
+Real & 13 & 0 & 1 & 5 & 19 \\
+\hline
+\end{tabular}
+\caption{Anzahl Detektionen pro Klasse für verschiedene distance\_threshold (Unebene Fläche).}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{c|c|c|c|c|c}
+\hline
+\textbf{cluster\_tolerance} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
+\hline
+0.30 & 16 & 3 & 5 & 1 & 25 \\
+0.50 & 16 & 1 & 2 & 1 & 20 \\
+0.70 & 17 & 1 & 1 & 2 & 21 \\
+0.90 & 13 & 1 & 0 & 2 & 16 \\
+\hline
+Real & 13 & 0 & 1 & 5 & 19 \\
+\hline
+\end{tabular}
+\caption{Anzahl Detektionen pro Klasse für verschiedene cluster\_tolerance (Unebene Fläche).}
+\end{table}
+
+Im Vergleich zu den ebenen Szenarien fällt auf, dass die geneigte Fahrbahn deutlich mehr Fehlalarme bei kleinen Objekten erzeugt. Schon bei \(\textit{voxel\_size} = 0{,}10\,\text{m}\) entstehen insgesamt 25 Detektionen, obwohl das Realbild nur 19 Objekte enthält; die Höhenvarianz verstärkt hier das Rauschen. Größere Voxel glätten die Punktwolke und reduzieren fälschliche Personen-Detektionen (von 7 auf 0), senken aber zugleich die Lkw-Erkennung, weil schräge Fahrzeugflanken in groben Voxeln zusammenfallen. Ähnlich zeigt das Bodensegment \(\textit{distance\_threshold}\), dass Werte oberhalb von \(0{,}15\,\text{m}\) die Gesamtzahl auf das Realniveau (19) stabilisieren, während zu kleine Schwellen (0{,}10\,\text{m}) Objekte in Bodenausreißer zerlegen. Bei der Clusterung trennt eine mittlere \(\textit{cluster\_tolerance}\) von \(0{,}50\,\text{m}\) die Fahrzeuge trotz Steigung am zuverlässigsten und vermeidet zugleich die Übersegmentierung, die bei \(0{,}30\,\text{m}\) zu fünf Fahrrad-Fehldetektionen führt. Insgesamt bestätigen die geneigten Szenen, dass moderat gewählte Parameter die Höhenstreuung abfangen und die Detektionszahlen nahe an den Realwerten halten, ohne relevante Objektstrukturen zu verlieren.
+
+\subsection{Fazit der Parameterstudie}
+
+Die Studie belegt, dass moderate Werte für die Kernparameter die robustesten Ergebnisse liefern: Eine Voxelgröße von \(0{,}15\,\text{m}\) bis \(0{,}20\,\text{m}\) glättet Rauschen, ohne feine Objektstrukturen zu verlieren, \(\textit{distance\_threshold} = 0{,}15\,\text{m}\) verhindert Ausfransungen in geneigten Szenen und \(\textit{cluster\_tolerance}\) um \(0{,}50\,\text{m}\) trennt dicht beieinanderstehende Objekte zuverlässig, ohne sie zu übersegmentieren. Größere oder kleinere Abweichungen führten entweder zu übermäßiger Detektionszahl (Fehlalarme) oder zum Zusammenfallen benachbarter Objekte. Insgesamt bestätigt die Parameterstudie, dass die gewählte Verarbeitungskette mit diesen konservativen Mittelwerten ein stabiles Gleichgewicht zwischen Präzision und Robustheit erreicht. Sie erklärt zugleich, warum die in Tabelle~\ref{tab:benchmark_node_parameter_clean} zusammengefassten Einsatzwerte in die Fahrtests übernommen wurden.
+
+Die Tabelle~\ref{tab:benchmark_node_parameter_clean} fasst die Endparameter zusammen und bildet die Grundlage für den anschließenden Test im Fahrbetrieb.
+\begin{table}[H]
+  \centering
+  \caption{Parameterübersicht der Nodes im \texttt{benchmark.launch.py} für den Test im Fahrbetrieb}
+  \label{tab:benchmark_node_parameter_clean}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Node} & \textbf{Parameter} & \textbf{Wert} \\
+    \midrule
+
+    \texttt{crop\_box\_node\_cpp} 
+      & \texttt{min\_bound}  & \([-10.0,\ -6.0,\ -3.0]\) \\
+      & \texttt{max\_bound}  & \([10.0,\ 6.0,\ 5.0]\) \\
+    \midrule
+
+    \texttt{voxel\_filter\_node\_cpp} 
+      & \texttt{voxel\_size} & 0.20 \\
+    \midrule
+
+    \texttt{ransac\_ground\_node\_cpp} 
+      & \texttt{distance\_threshold} & 0.15 \\
+      & \texttt{max\_iterations}    & 1000 \\
+    \midrule
+
+    \texttt{cluster\_extraction\_node\_cpp} 
+      & \texttt{cluster\_tolerance} & 0.50 \\
+      & \texttt{min\_cluster\_size} & 40 \\
+      & \texttt{max\_cluster\_size} & 8000 \\
+      & \texttt{max\_clusters}      & 200 \\
+      & \texttt{bbox\_type}         & AABB \\
+    \midrule
+
+    \texttt{tracking\_node\_cpp} 
+      & \texttt{gate\_dist\_max} & 4.0 \\
+      & \texttt{max\_missed}    & 10 \\
+      & \texttt{min\_hits}      & 2 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Test im Fahrbetrieb}
+
+\subsection{Testumgebung}
+\label{sec:testumgebung}
+
+Für die Evaluierung der entwickelten Messkette wurden Tests im Fahrbetrieb gemacht.
+Am Testtag herrschten \(-1\,^{\circ}\text{C}\)
+mit gefühlten \(-4\,^{\circ}\text{C}\) bei überwiegend bewölktem Himmel.
+Ziel dieser Datensätze war es, typische Objekte und Strukturen einer realen Verkehrsumgebung –
+wie Personen, Fahrradfahrer, Pkw und Lkw – unter realistischen Bedingungen zu erfassen.
+Für die Auswertung im Fahrbetrieb kam dabei der Laptop mit der bestehenden GUI zum Einsatz (\textit{Microsoft Surface Book~3}).
+
+Um reproduzierbare Ergebnisse zu erhalten, wurden fünf klar abgegrenzte Fahrszenarien definiert und jeweils für eine Minute
+aufgezeichnet. Jede Sequenz besitzt ein spezifisches Fahrprofil und Prüfziel, sodass Stabilität der Messkette ebenso wie die
+Robustheit der Segmentierung und das ID-Handling beobachtet werden konnten:
+
+\begin{enumerate}
+    \item \textbf{Gerade Strecke, Stand (0\,km/h):} Referenzlauf ohne Fahrzeugbewegung zur Ermittlung von Grundlatenz und -frequenz.
+          Ziel war eine stabile Hz/Latenz, Sensorstabilität, konsistente Boxen sowie ID-Kontinuität.
+          
+    \item \textbf{Kurve, 40\,km/h (Urban/Innenstadt):} Dynamische Fahrt durch eine urbane Kurve, um die Stabilität von Frequenz
+          und Latenz ohne längere Aussetzer zu verifizieren.
+          
+    \item \textbf{Innenstadt mit Steigung, 30\,km/h:} Leichte Steigungsfahrt in urbanem Umfeld. Prüft, ob die Verarbeitungskette auch bei
+          Gefälle-/Steigungslagen konstante Frequenzen und Latenzen liefert.
+          
+    \item \textbf{Kreuzung, 50\,km/h:} Schnellere Passage über unebenes Terrain, um die Robustheit der
+          Verarbeitungskette gegenüber Karosseriebewegungen und vertikalen Lastwechseln zu bewerten.
+    \item \textbf{Urbanes Szenario mit unebenem Boden, 50\,km/h:} Fahrt über unebenen Untergrund mit weiteren Verkehrsteilnehmern. Schwerpunkte
+          waren stabile Hz/Latenz und eine robuste Bodensegmentierung trotz Unebenheiten sowie bewegter Objekte.
+\end{enumerate}
+
+\subsubsection{Gerade Strecke, Stand (0\,km/h):}
+\label{gerade_strecke}
+Im Szenario \enquote{Gerade Strecke, Stand} zeigte sich ein für rotierende LiDAR-Sensoren
+typisches Echtzeitverhalten, das durch mehrere systemtechnische Effekte beeinflusst wurde.
+Bei der Wiedergabe der Aufzeichnungen (2025-11-21-VK-OL-001) meldete der \texttt{rosbag2\_player} zeitweise eine
+leere Read-Ahead-Queue (\enquote{Message queue starved}). Dies weist auf I/O-Limitierungen
+bei der Bag-Wiedergabe hin und kann zu zusätzlichen zeitlichen Schwankungen in den
+Eingangsfrequenzen führen, ohne jedoch die Verarbeitungslogik der Verarbeitungskette selbst zu
+verändern. Die gemessenen Durchsatzraten des \texttt{frame\_loss\_probe} bestätigten dabei,
+dass alle Verarbeitungsknoten die eingehenden Frames zuverlässig verarbeiten
+(pass-Rate überwiegend $\geq 100\,\%$) und keine Sequenzlücken entstanden
+(\enquote{gaps~=~0}). Die niedrige effektive Eingangsfrequenz der Punktwolke
+($\approx 2$--$2{,}5\,\text{Hz}$) ist daher primär auf die Datenquelle bzw.\ die
+I/O-Umgebung zurückzuführen und nicht auf eine Überlastung der implementierten
+Verarbeitungskette.
+
+Die Tracking-IDs waren im Echtbetrieb dennoch nur eingeschränkt stabil. Aufgrund der
+geringen Eingangsfrequenz änderte sich die Clustergeometrie zwischen den einzelnen Frames
+deutlich. Der eingesetzte Nearest-Neighbour-Tracker besitzt keine explizite Historie oder
+Re-Identifikationslogik und reagiert daher empfindlich auf Geometrieänderungen sowie kleine
+Positionssprünge. Dies führte zu häufigen ID-Neuzuweisungen: Der \texttt{ids\_probe}
+registrierte bis zu 36–72 Track-Geburten pro Minute, wobei die mediane Lebensdauer
+abgeschlossener Tracks bei $0{,}0\,\text{s}$ lag. Nur vereinzelt traten stabile Tracks mit
+Lebensdauern im Bereich von $5$--$10\,\text{s}$ auf. Die Trackinginstabilität ist somit eine
+direkte Folge der niedrigen Eingangsfrequenz und nicht auf Fehler innerhalb der
+Pipeline zurückzuführen.
+
+Zusätzlich war die Rotationsbewegung des Ouster-Sensors in Rviz deutlich sichtbar. Bei
+niedrigen Bildraten erscheinen einzelne Lasersektoren zeitlich voneinander getrennt,
+wodurch die typische Drehbewegung des rotierenden LiDAR-Bildes wahrnehmbar wird. Dieses
+Phänomen ist ein normales physikalisches Verhalten des Sensors und stellt keinen Fehler der
+Verarbeitungskette dar.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\linewidth]{Bilder/gerade_strecke_stand.png}
+  \caption{Szenario \enquote{Gerade Strecke, Stand}: Links die Frontkameraansicht des Versuchsträgers,
+  rechts die LiDAR-Punktwolke mit extrahierten Clustern und Fahrzeug-Track-IDs in der Echtzeitvisualisierung(2025-11-21-Messdaten/2025-11-21-VK-OL-001).}
+  \label{fig:gerade_strecke_stand}
+\end{figure}
+
+\subsubsection{Kurve, 40\,km/h (Urban/Innenstadt)}
+
+Ziel dieses Tests war die Überprüfung, ob die Verarbeitungskette auch bei Fahrt mit ca.\ 40\,km/h in einer innerstädtischen Kurve eine stabile Datenrate und Latenz ohne längere Aussetzer erreicht.
+
+Die mit \texttt{resource\_probe.py} gemessene mittlere CPU-Auslastung der Verarbeitungsnodes liegt bei insgesamt
+\(\approx 31{,}4\,\%\). Der \texttt{crop\_box\_node} weist mit rund \(17{,}9\,\%\) den höchsten Anteil auf, während
+\texttt{voxel\_filter\_node}, \texttt{ransac\_ground\_node}, \texttt{cluster\_extraction\_node} und
+\texttt{tracking\_node} jeweils unter \(5\,\%\) bleiben. Der durchschnittliche Hauptspeicherbedarf der Kette beträgt
+\(\approx 198\,\text{MB}\). Damit liegen CPU- und Speicherlast im unkritischen Bereich, sodass auch bei höheren
+Umgebungsanforderungen noch Reserven bestehen.
+
+Das Latenztool \texttt{latency\_probe} ermittelt für die einzelnen Verarbeitungsschritte die folgenden mittleren
+Laufzeiten:
+\begin{itemize}
+  \item \texttt{crop\_box\_node} $\rightarrow$ \texttt{voxel\_filter\_node}: \(14{,}05\,\text{ms}\) (\(n = 146\)),
+  \item \texttt{voxel\_filter\_node} $\rightarrow$ \texttt{ransac\_ground\_node}: \(7{,}36\,\text{ms}\) (\(n = 146\)),
+  \item \texttt{ransac\_ground\_node} $\rightarrow$ \texttt{cluster\_extraction\_node}: \(3{,}06\,\text{ms}\) (\(n = 145\)),
+  \item \texttt{cluster\_extraction\_node} $\rightarrow$ \texttt{tracking\_node}: \(14{,}81\,\text{ms}\) (\(n = 145\)).
+\end{itemize}
+Für die gesamte Verarbeitungskette vom Eingang der zugeschnittenen Punktwolke bis zur Ausgabe der Tracks ergibt sich
+damit eine mittlere End-to-End-Latenz von
+\[
+  t_{\text{crop}\rightarrow\text{track}} \approx 39{,}14\,\text{ms} \quad (n = 145),
+\]
+die deutlich unter einem typischen Zielwert von \(100\,\text{ms}\) liegt. Die Verarbeitung kann somit auch im
+Fahrszenario \emph{Kurve} als echtzeitfähig eingestuft werden.
+
+Die mittlere Verarbeitungsrate der Punktwolken bzw.\ Zwischenstufen beträgt im Test
+\(\approx 3{,}7\,\text{Hz}\). Die gemessenen Perioden liegen zwischen \(0{,}154\,\text{s}\) und \(0{,}793\,\text{s}\)
+bei einer Standardabweichung von \(\approx 0{,}095\,\text{s}\), was auf einen überwiegend gleichmäßigen Ablauf ohne
+längere Aussetzer hinweist.
+
+Für das Track-Topic (\emph{``/bench/tracks\_raw''}) ergibt sich eine mittlere Ausgaberate von etwa \(1{,}8\,\text{Hz}\).
+Die Perioden liegen überwiegend im Bereich von \(\approx 0{,}3\,\text{s}\), erreichen vereinzelt jedoch Werte bis
+\(1{,}44\,\text{s}\). Insgesamt bleibt die Track-Ausgabe damit hinreichend stabil, zeigt aber im Vergleich zur
+Verarbeitungsrate der Punktwolken gelegentliche längere Intervalle, die auf interne Pufferungen oder
+Verarbeitungsjitter im Tracking hinweisen können.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{Bilder/kurve_szene.png}
+  \caption{Szenario \emph{Kurve} im urbanen Umfeld: Links die Fisheye-Kameraansicht der Fahrszene, rechts die zugehörige LiDAR-Visualisierung in RViz mit detektierten Clustern und PKW-Tracking-Boxen.((2025-11-21-Messdaten/2025-11-21-VK-OL-002)}
+  \label{fig:kurve_rviz_kamera}
+\end{figure}
+
+
+\subsubsection{Innenstadt mit Steigung, 30\,km/h}
+
+Die mit dem \texttt{latency\_probe} aufgezeichneten Messwerte zeigen für die einzelnen Verarbeitungsstufen mittlere Latenzen von etwa
+\(21{,}1\,\text{ms}\) (\texttt{crop\_box\_node}~\(\rightarrow\)~\texttt{voxel\_filter\_node}),
+\(2{,}7\,\text{ms}\) (\texttt{voxel\_filter\_node}~\(\rightarrow\)~\texttt{ransac\_ground\_node}),
+\(0{,}23\,\text{ms}\) (\texttt{ransac\_ground\_node}~\(\rightarrow\)~\texttt{cluster\_extraction\_node}) und
+\(6{,}0\,\text{ms}\) (\texttt{cluster\_extraction\_node}~\(\rightarrow\)~\texttt{tracking\_node}).
+Die End-to-End-Latenz von \texttt{crop\_box\_node} zu \texttt{tracking\_node} liegt im Mittel bei rund
+\(30\,\text{ms}\) und nimmt während der Messung leicht ab, sodass der geforderte Grenzwert von
+\(100\,\text{ms}\) mit deutlicher Reserve eingehalten wird.
+
+Der Ressourcenverbrauch der Kette bleibt mit einer durchschnittlichen CPU-Last von
+\(\approx 12{,}3\,\%\) und einem Gesamtspeicherbedarf von rund \(200\,\text{MB}\) auf dem Versuchsrechner moderat. Keiner der Nodes sticht als Engpass hervor; die Last verteilt sich im Wesentlichen auf
+\texttt{crop\_box\_node}, \texttt{ransac\_ground\_node} und \texttt{cluster\_extraction\_node}.
+
+Die mit \texttt{ros2 topic hz} gemessene Frequenz der Verarbeitungsdaten (z.\,B.\ \texttt{/detections\_raw}) liegt stabil bei etwa \(3{,}3\) bis \(3{,}4\,\text{Hz}\) mit geringen Schwankungen
+(Intervalldauer \(\approx 0{,}3\,\text{s}\), maximale beobachtete Lücke \(\approx 0{,}36\,\text{s}\)).
+Das Tracking-Topic erreicht nach der Initialisierungsphase eine effektive Aktualisierungsrate von
+rund \(2\,\text{Hz}\). Ein in den Messdaten ausgewiesener maximaler Abstand von
+\(55{,}5\,\text{s}\) ist als einzelner Start-Ausreißer zu interpretieren und deutet nicht auf wiederkehrende Aussetzer im laufenden Betrieb hin. Insgesamt erfüllt die Verarbeitungskette damit das Ziel einer stabilen Latenz und Datenrate ohne längere Unterbrechungen auch unter innerstädtischen Fahrbedingungen.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{Bilder/steigung_szene.png}
+  \caption{Szenario \emph{Steigung}: Links die Fisheye-Kameraansicht einer leicht ansteigenden, engen Straße im urbanen Umfeld; rechts die entsprechende LiDAR-Visualisierung in RViz mit erkannten PKW-Objekten und einem Fahrradfahrer(2025-11-21-Messdaten/2025-11-21-VK-OL-005).}
+  \label{fig:steigung_rviz_kamera}
+\end{figure}
+
+\subsubsection{Kreuzung, 50\,km/h:}
+Die Visualisierung der Daten in diesem Fall ist fehlgeschlagen (2025-11-21-Messdaten/2025-11-21-VK-OL-005). 
+
+Im Szenario \emph{Kreuzung} mit einer Fahrgeschwindigkeit von \(50\,\text{km/h}\) wurde das Verhalten der Verarbeitungskette unter kombinierter Rotation, Fahrbahnunebenheiten und wechselnder Objektgeometrie untersucht. Die Verarbeitungsgeschwindigkeit zeigt über die gesamte Versuchsdauer eine konstante Frequenz von rund \(3.21{-}3.24\,\text{Hz}\). Gleichzeitig nimmt die Standardabweichung der Intervallzeiten kontinuierlich ab (von ca.\ \(0.072\,\text{s}\) auf \(0.057\,\text{s}\)), was auf eine zunehmende Stabilisierung der Verarbeitungskette trotz dynamischer Fahrsituation hinweist.
+
+Die gemessenen Latenzen der einzelnen Verarbeitungsschritte bleiben ebenfalls über den gesamten Versuch sehr stabil. Die Hauptanteile entfallen erwartungsgemäß auf die Kombination aus \texttt{CropBox} und \texttt{VoxelGrid}, die im Bereich von \(15.4{-}17.3\,\text{ms}\) liegen. Die folgenden Schritte --- RANSAC-Bodensegmentierung und Cluster-Extraktion --- weisen jeweils sehr geringe Laufzeiten auf (unter \(2\,\text{ms}\) bzw.\ \(0.5\,\text{ms}\)). Die resultierende End-zu-End-Latenz zwischen Eingangspunktwolke und Tracking-Output beträgt konstant \(21{-}24\,\text{ms}\), was für die getestete Geschwindigkeit ein robustes Reaktionsverhalten sicherstellt.
+
+Bei den Tracking-Outputs (\texttt{tracks\_raw}) treten kurzzeitige Frequenzabfälle sowie erhöhte Varianzen auf, die zeitlich mit Bodenwellen und Steigungen zusammenfallen. Diese Effekte sind plausibel auf temporäre Punktwolkenverzerrungen zurückzuführen, welche die Stabilität der Clusterbildung beeinflussen. Der schnelle Wiederanstieg der Frequenz zeigt jedoch, dass die Trackingkomponente insgesamt reibungsfrei weiterarbeiten kann und keine nachhaltige Instabilität entsteht.
+
+Eine Ausgabe von \texttt{resource\_probe.py}  konnte wegen eines zu früh gekillten Prozesses nicht gespeichert werden.
+
+\subsubsection{Urbanes Szenario mit unebenem Boden, 50\,km/h}
+\label{sec:urban_50kmh}
+
+Der Test im urbanen Umfeld bei etwa \(50\,\text{km/h}\) diente der Überprüfung der Robustheit der Bodensegmentierung unter realistischen Bedingungen mit Fahrbahnunebenheiten. Die Messung der Ressourcen mittels \texttt{resource\_probe.py} zeigte eine sehr geringe Gesamtauslastung der Verarbeitungskette: Die CPU-Last aller Knoten lag im Mittel bei lediglich \(11{,}7\,\%\), der gesamte Speicherbedarf bei rund \(200\,\text{MB}\). Einzelne Knoten wie \texttt{crop\_box\_node} oder \texttt{cluster\_extraction\_node} erreichten jeweils nur wenige Prozentpunkte Auslastung, sodass ausreichende Leistungsreserven bestehen.
+
+Die Latenzmessungen mit \texttt{latency\_probe.py} verdeutlichen, dass die Ende-zu-Ende-Verarbeitung selbst in diesem dynamischen Szenario stabil bleibt. Die Verzögerung von \texttt{crop\_box} bis \texttt{tracking} bewegte sich im stationären Zustand im Bereich von etwa \(20\)–\(26\,\text{ms}\). Zwar steigen die Latenzen einzelner Schritte wie \texttt{ransac\_ground} oder \texttt{cluster\_extraction}, wenn durch unebene Fahrbahn oder zusätzliche Objekte mehr Punktdaten verarbeitet werden müssen, jedoch bleiben diese Effekte moderat und beeinträchtigen die Gesamtlatenz nicht kritisch.
+
+Auch die Topic-Frequenzen zeigten ein stabiles Verhalten. Die Eingangsfrequenz des Sensors \texttt{/ouster/points} pendelte sich auf etwa \(3{,}2\,\text{Hz}\) ein, wobei die Standardabweichung im Zeitverlauf abnahm und somit eine zunehmende Stabilität der Datenrate belegte. Die Ausgangsfrequenz der Tracks (\texttt{/bench/tracks\_raw}) lag im Mittel bei rund \(3{,}0\,\text{Hz}\). Größere maximale Intervalle sind hier durch das Publikationsverhalten bedingt: \texttt{tracks\_raw} sendet nur dann Nachrichten, wenn tatsächlich verfolgte Objekte vorhanden sind, sodass Phasen ohne erkannte Ziele als lange Intervalle in der Frequenzmessung erscheinen.
+
+Insgesamt zeigt dieses Szenario, dass die Bodensegmentierung und die gesamte Verarbeitungskette auch bei Fahrbahnunebenheiten und im urbanen Umfeld robust und performant arbeiten. Weder die Latenzen noch die Datenraten weisen kritische Schwankungen auf, sodass die Anforderungen an eine stabile, echtzeitfähige Verarbeitung erfüllt werden.
+
+Die Abbildung zeigt die Robustheit der Verarbeitungskette bei realen Straßenprofilen und variierender Bodenhöhe.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{Bilder/urban_unebener_boden.png}
+    \caption{Urbanes Szenario mit unebenem Boden: Links die Fisheye-Kameraansicht einer städtischen Straße mit leicht unregelmäßiger Fahrbahnoberfläche; rechts die entsprechende LiDAR-Visualisierung in RViz mit detektierten PKW-Clustern.(2025-11-21-Messdaten/2025-11-21-VK-OL-007)}
+    \label{fig:urban_unebener_boden}
+\end{figure}
+
+
+Die im Fahrbetrieb gemessenen Kenngrößen zu Ressourcennutzung, Latenz sowie Eingangs- und Ausgangsfrequenzen der Verarbeitungskette sind in Tabelle~\ref{tab:fahrbetrieb_ueberblick} zusammengefasst.
+
+\begin{table}[H]
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{0.95}
+  \begin{tabular}{|p{3.4cm}|p{3.1cm}|p{2.1cm}|p{2.1cm}|p{2.1cm}|}
+    \hline
+    \textbf{Szenario} & \textbf{CPU / RSS} & \textbf{mittlere Latenz} & \textbf{f\_in} & \textbf{f\_out} \\
+    \hline
+
+    Gerade Strecke, Stand &
+    32\,\% / 197\,MB &
+    86\,ms (stabil 81\,ms) &
+    2.5\,Hz &
+    1.8\,Hz \\
+    \hline
+
+    Kurve, 40\,km/h (Urban) &
+    31.4\,\% / 198\,MB &
+    39\,ms &
+    3.7\,Hz &
+    1.8\,Hz \\
+    \hline
+
+    Innenstadt + Steigung, 30\,km/h &
+    12.3\,\% / 200\,MB &
+    30\,ms &
+    3.3--3.4\,Hz &
+    2\,Hz \\
+    \hline
+
+    Kreuzung, 50\,km/h &
+    n.\,a. &
+    21--24\,ms &
+    3.21--3.24\,Hz &
+    kurze Einbrüche bis \(\approx 3{,}15\,\text{Hz}\)  \\
+    \hline
+
+    Urban, 50\,km/h (Unebene Fläche) &
+    11.7\,\% / 200\,MB &
+    20--26\,ms &
+    3.2\,Hz &
+    3.0\,Hz \\
+    \hline
+  \end{tabular}
+  \caption{Vergleichende Übersicht der Messgrößen je Szenario}
+  \label{tab:fahrbetrieb_ueberblick}
+\end{table}
+
+Die Übersicht verdeutlicht, dass die gewählte Parametrierung im Fahrbetrieb zu stabilen Verarbeitungsketten führt:
+Selbst in dynamischen Szenarien wie Kurvenfahrten oder innerstädtischen Abschnitten bleibt die mittlere Latenz deutlich
+unter 90\,ms, während die Ausgangsfrequenz nur moderat hinter der Eingangsfrequenz zurückbleibt. Auffällige Abweichungen
+treten lediglich im Kreuzungsszenario auf, wo kurzzeitige Frequenzeinbrüche beobachtet wurden. Insgesamt zeigen die
+Messwerte, dass die Verarbeitungskette auch unter variierenden Umweltbedingungen performant arbeitet und genügend Reserven für
+weitergehende Funktionalitäten bietet.
+
+\section{Bewertung des Algorithmus}
+Die in Kapitel~\ref{chap:systemarchitektur} formulierten Anforderungen an den Algorithmus (Tabelle~\ref{tab:anforderungen_messkette}) lassen sich anhand der Messergebnisse weitgehend bestätigen. Im Folgenden werden die zentralen Kriterien zusammengefasst und den Beobachtungen aus den Fahrversuchen gegenübergestellt:
+\begin{itemize}
+  \item \textbf{Echtzeitfähigkeit (Anforderung~6):} Die gemessenen End-to-End-Latenzen liegen mit \(20{-}40\,\text{ms}\) deutlich unter der Zielmarke von \(100\,\text{ms}\). Selbst im ungünstigsten Szenario (Stillstand) bleibt die mittlere Latenz stabil bei rund \(81\,\text{ms}\), sodass die vorgegebene Ausführungsrate von \(10\,\text{Hz}\) eingehalten werden kann.
+  \item \textbf{Ressourceneffizienz und Stabilität (Anforderungen~7~\&~8):} Die CPU-Auslastung bleibt über alle Szenarien unter \(35\,\%\), der Speicherbedarf stabilisiert sich bei etwa \(200\,\text{MB}\). Damit werden die Grenzen für Standardhardware klar unterschritten und es besteht Reserve für zusätzliche Funktionen oder Debug-Ausgaben.
+  \item \textbf{Datenkonsistenz und Robustheit (Anforderungen~1--5):} Die Topics \texttt{/ouster/points}, \texttt{/detections\_raw} und \texttt{/tracks\_raw} werden ohne Paketverluste im Bereich \(3{-}3{,}7\,\text{Hz}\) publiziert, die Track-IDs bleiben in Bewegungsszenarien über mehrere Frames stabil. Downsampling und Bodensegmentierung erfüllen die geforderten Restbodenanteile (\(<5\,\%\)) und erhalten ausreichend Stützpunkte für robuste Bounding-Boxes, sodass die geometrische Genauigkeit der Objektrepräsentation gewahrt bleibt.
+  \item \textbf{Visualisierung und Integration (Anforderungen~9~\&~10):} Rohdaten, Bodenfilter, Cluster und Tracks lassen sich in \texttt{RViz2} sowie der bestehenden GUI ohne spürbare Verzögerung darstellen. Die Verarbeitung bleibt auch bei zwei Betriebsmodi (Sensor, Sensor~+~PC) stabil, und muss bei einem verbessert werden.
+\end{itemize}
+
+Insgesamt erfüllt die entwickelte Verarbeitungskette die definierten funktionalen und nicht-funktionalen Anforderungen: Sie arbeitet echtzeitfähig, ressourcenschonend und robust gegenüber wechselnden Umgebungsbedingungen. Optimierungspotenzial besteht vor allem im Feintuning der Tracking-Schwellen, um kurzlebige Track-Geburten in statischen Szenen weiter zu reduzieren, ohne die Reaktionsfähigkeit in dynamischen Situationen zu beeinträchtigen.

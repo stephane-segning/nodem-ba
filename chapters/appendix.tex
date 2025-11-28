@@ -1,0 +1,72 @@
+% ====== Anhang ======
+\chapter*{Digitaler Anhang}
+\label{chap:digitaler_anhang}
+\addcontentsline{toc}{chapter}{Digitaler Anhang}
+
+Alle im Rahmen dieser Arbeit verwendeten Codes und Skripte sind im
+institutsinternen Dateisystem des Labors Fahrzeugtechnik abgelegt.
+Der digitale Anhang befindet sich unter folgendem Basispfad:
+
+\begin{quote}
+\textit{V:/Fak\_MBVS/Projekte/Labor\_Fahrzeugtechnik/
+FAS\_Studenten\_Austausch/FAS\_Sensorik\_am\_Astra/BA\_Nodem\_Ouster/}
+\end{quote}
+
+\section*{1. Implementierter ROS-2-Code}
+\label{anhang:code}
+
+Ablageort:
+
+\begin{quote}
+\textit{V:/Fak\_MBVS/Projekte/Labor\_Fahrzeugtechnik/
+FAS\_Studenten\_Austausch/FAS\_Sensorik\_am\_Astra/BA\_Nodem\_Ouster/
+Ouster\_OS1/ros2\_ws/src/ouster\_cpp/src/}
+\end{quote}
+
+Enthalten sind:
+\begin{itemize}
+  \item \texttt{crop\_box\_node.cpp}
+  \item \texttt{voxel\_filter\_node.cpp}
+  \item \texttt{ransac\_ground\_node.cpp}
+  \item \texttt{cluster\_extraction\_node.cpp}
+  \item \texttt{tracking\_node.cpp}
+  \item \texttt{CMakeLists.txt}, \texttt{package.xml}
+  \item verwendete Launch-Dateien (z.\,B. \texttt{benchmark.launch.py} sowie das Ouster-Launch-File)
+\end{itemize}
+
+\section*{2. Skripte zur Messung und Analyse}
+\label{anhang:skripte}
+
+Ablageort:
+
+\begin{quote}
+\textit{V:/Fak\_MBVS/Projekte/Labor\_Fahrzeugtechnik/
+FAS\_Studenten\_Austausch/FAS\_Sensorik\_am\_Astra/BA\_Nodem\_Ouster/
+Ouster\_OS1/ros2\_ws/src/ouster\_cpp/scripts/}
+\end{quote}
+
+Enthalten sind:
+\begin{itemize}
+  \item \texttt{frame\_loss\_probe.py}
+  \item \texttt{ids\_probe.py}
+  \item \texttt{latency\_probe.py}
+  \item \texttt{resource\_probe.py}
+\end{itemize}
+
+\section*{3. Messaufzeichnungen}
+\label{anhang:messaufzeichnungen}
+
+Die vollständigen Messdaten der Fahrversuche (\texttt{rosbag2}) werden zentral im Labor
+Fahrzeugtechnik gespeichert.
+
+Ablageort der Rohdaten:
+
+\begin{quote}
+\textit{V:/Fak\_MBVS/Projekte/Labor\_Fahrzeugtechnik/Messdaten\_Astra/}
+\end{quote}
+
+Relevante Versuchsordner:
+\begin{itemize}
+  \item \texttt{2025-10-15-Messdaten}
+  \item \texttt{2025-11-21-Messdaten}
+\end{itemize}

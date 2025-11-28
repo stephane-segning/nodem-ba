@@ -1,0 +1,132 @@
+\chapter{Cluster-Extraktion und Ermittlung von Bounding-Boxes}
+\label{chap:clustering}
+\label{chap:cluster_extraction}
+
+Nach der Entfernung der Bodenpunkte (vgl. Kapitel~\ref{chap:bodensegmentierung}) werden die verbleibenden Punktwolken in zusammenhängende Punktmengen (Cluster) gruppiert und mit Begrenzungsboxen beschrieben. Die Stufe bildet somit die Brücke zwischen Bodensegmentierung und Tracking: Sie fasst Punkte zu Objekten zusammen, bestimmt deren Lage und Abmessungen und stellt diese als Detektionen für die Verfolgung bereit. Der Schwerpunkt liegt auf einer robusten, echtzeitfähigen Verarbeitung, die auch bei variabler Punktdichte und Teilokklusion konsistente Boxen liefert.
+
+\section{Cluster-Extraktion}
+\label{sec:cluster_extraction}
+
+Zwei Punkte \(p_i=(x_i,y_i,z_i)^\top\) und \(p_j\) gehören demselben Cluster an, wenn sie in einem geeigneten Nachbarschaftsbegriff als verbunden gelten. Daraus lässt sich ein ungerichteter Graph \(G=(V,E)\) konstruieren, dessen Knoten \(V\) die Punkte und dessen Kanten \(E\) die Paarverbindungen darstellen. Die Zusammenhangskomponenten dieses Graphen entsprechen den Clustern; Traversierungen (BFS/DFS) über einen k-d-Baum liefern in \(O(n \log n)\) die Komponenten \parencite{rusu2011pcl,Douillard2011}. Im gängigen euklidischen Ansatz bildet die Distanz
+\[
+ d(p_i,p_j) = \sqrt{(x_i-x_j)^2+(y_i-y_j)^2+(z_i-z_j)^2}
+\]
+die Grundlage; eine feste Verknüpfungsschwelle \(\varepsilon\) definiert die Kanten von \(G\). \ac{LiDAR}-Punktwolken besitzen aufgrund ihres winkelbasierten Abtastgitters eine von der Entfernung abhängige, anisotrope Punktdichte \parencite{himmelsbach2010fast}. Deshalb beeinflussen Vorverarbeitung (Voxelgröße) und die Wahl von \(\varepsilon\) die Fragmentierung/Verschmelzung besonders stark: Ein zu kleiner Schwellenwert lässt weit entfernte Objekte zerfallen, ein zu großer führt zum Verschmelzen benachbarter Objekte im Nahbereich. Abbildung~\ref{fig:cluster_principle} skizziert das Vorgehen und verdeutlicht, dass die Clusterung die eigentliche Objektbildung für die nachgelagerte Verfolgung bereitstellt.
+
+Für jede identifizierte Komponente werden im Anschluss Lage (Zentrum) und Ausdehnung über Begrenzungsboxen bestimmt. Achsenparallele Boxen (AABB) greifen auf Min-/Max-Koordinaten zurück, orientierte Boxen (OBB) nutzen Trägheitstensor oder Hauptachsentransformation (PCA), um die Orientierung der Punktverteilung widerzuspiegeln \parencite{gottschalk1996obb}. Beide Varianten liefern damit ein abstrahiertes, metrisches Objektmodell, das als \emph{Detektion} publiziert wird und die Initialisierung der Tracking-Stufe ermöglicht.
+
+In dieser Arbeit wird die euklidische Clusterung der \emph{Point Cloud Library (\ac{PCL})} eingesetzt (\texttt{pcl::EuclideanClusterExtraction}) in Verbindung mit einem k-d-Baum (\texttt{pcl::search::KdTree}) \parencite{pcl_docs_2025}. Der Algorithmus folgt dem in der Literatur etablierten Ablauf: Aufbau eines Suchbaums, breadth-first/ depth-first Traversierung und komponentenweise Markierung der Punkte \parencite{Douillard2011,rusu2011pcl}. Gegenüber dichtebasierten Verfahren wie \ac{DBSCAN} sind die Parameterzahl und die Rechenzeit deterministischer, was die Integration in eine Echtzeit-Pipeline erleichtert \parencite{Ester1996DBSCAN}. Zusätzlich ist das Verfahren trainingsfrei und benötigt nur wenige, gut interpretierbare Parameter:
+
+\begin{itemize}
+  \item \textbf{\texttt{cluster\_tolerance}} \(\varepsilon\) [m]: maximaler euklidischer Punktabstand innerhalb eines Clusters (räumliche Verknüpfung).
+  \item \textbf{\texttt{min\_cluster\_size}} / \textbf{\texttt{max\_cluster\_size}}: untere/obere Schranke der Punktanzahl pro Cluster (Rauschen verwerfen, Ausreißer begrenzen).
+  \item \textbf{\texttt{max\_clusters}}: harte Obergrenze pro Frame (Determinismus, Zeitbudget).
+\end{itemize}
+
+Richtwerte im Zusammenspiel mit einem Voxel-Filter (Voxelkantenlänge \(\approx\)\SI{0.15}{\meter}–\SI{0.25}{\meter}):
+\(\varepsilon \in [\SI{0.3}{\meter},\SI{0.7}{\meter}]\), \texttt{min\_cluster\_size} \(\approx 30\)–\(60\), \texttt{max\_clusters} \(\approx 200\). Solche Werte liegen im Bereich typischer Automotive-Studien, in denen \(\varepsilon\) zwischen \SI{0.4}{\meter} und \SI{0.8}{\meter} gewählt wird, um Fahrzeuge und Fußgänger bei mittlerer Voxelung zu trennen \parencite{himmelsbach2010fast,Douillard2011}. Kleinere \(\varepsilon\) vermeiden Verschmelzen benachbarter Objekte, größere \(\varepsilon\) reduzieren Fragmentierung in der Ferne. Alternativen wie dichtebasierte Verfahren (\ac{DBSCAN}/HDBSCAN) sind möglich, werden hier zugunsten der Echtzeitfähigkeit und einfachen Parametrik jedoch nicht eingesetzt \parencite{Ester1996DBSCAN}.
+
+\paragraph{Ablauf (Algorithmus)}
+\begin{enumerate}
+  \item \textbf{Vorbereitung}: optionales Downsampling per Voxel (gleichmäßigere Dichte, O(\(n\))).
+  \item \textbf{k-d-Baum}: Aufbau für die reduzierte Punktwolke (O(\(n\log n\))).
+  \item \textbf{Region Growing}: iteratives Durchlaufen unbesuchter Punkte; Nachbarsuche innerhalb \(\varepsilon\) über k-d-Baum, Zusammenfassen zu Komponenten (typisch \(\in O(n\log n)\)).
+  \item \textbf{Selektion}: Verwerfen zu kleiner/großer Komponenten per \texttt{min/max\_cluster\_size}.
+\end{enumerate}
+
+\paragraph{Praktische Aspekte}
+- \emph{Komplexität}: der Flaschenhals ist die Nachbarsuche; Voxel-Dowsampling reduziert \(n\) und beschleunigt die Suche signifikant \parencite{rusu2011pcl}.
+- \emph{Parameterkopplung}: sinnvolle Werte von \(\varepsilon\) korrelieren mit der Voxelgröße. Faustregel: \(\varepsilon\approx 2\dots 3\)\,\(\times\)\,\texttt{voxel\_size}; bei anisotroper Punktdichte (winkelbasiertes Abtastgitter) verstärkt sich dieser Effekt \parencite{himmelsbach2010fast}.
+- \emph{Reichweiten-Adaption (optional)}: \(\varepsilon(r)=\alpha r+\beta\) kann Fernbereichs-Fragmentierung reduzieren, wie in Reichweiten-bewussten Segmentierungen gezeigt \parencite{bogoslavskyi2016fast}; in dieser Arbeit verwenden wir für Determinismus und Einfachheit eine konstante \(\varepsilon\).
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|l|c|p{8cm}|}
+    \hline
+    \textbf{Parameter} & \textbf{Beispiel} & \textbf{Bedeutung} \\ \hline
+    \texttt{cluster\_tolerance} & \(0{,}5\,\mathrm{m}\) & Verknüpfungsschwelle in der euklidischen Nachbarschaft \\ \hline
+    \texttt{min\_cluster\_size} & 40 & Rauschunterdrückung, minimale Punktzahl \\ \hline
+    \texttt{max\_cluster\_size} & 8000 & Obergrenze zur Begrenzung großer Flächen/Hecken \\ \hline
+    \texttt{max\_clusters} & 200 & Harte Obergrenze pro Frame (Zeitbudget/Determinismus) \\ \hline
+  \end{tabular}
+  \caption{Parameter der euklidischen Clusterung (Richtwerte in den Experimenten).}
+  \label{tab:cluster_params_new}
+\end{table}
+
+\section{Ermittlung von Bounding-Boxes}
+\label{sec:boxes}
+Für jeden Cluster werden Zentrum und Ausdehnung über eine Begrenzungsbox bestimmt. Unterschieden werden achsenparallele Boxen (AABB) und orientierte Boxen (OBB). Beide Varianten liefern ein Zentrum \(\mathbf{c}\) und die Kantenlängen \((L, W, H)\); OBB enthält zusätzlich eine Orientierung \(\mathbf{q}\) (z.\,B. als Quaternion). Abbildung~\ref{fig:aabb_obb_compare} zeigt den praktischen Unterschied.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\linewidth]{Bilder/aabb_obb_vs.png}
+  \caption{Vergleich der Bounding-Box-Modelle \parencite{DarkRock2023AABB_OBB}}
+  \label{fig:aabb_obb_vs}
+\end{figure}
+
+Die Boxermittlung folgt direkt auf die Punktzusammenfassung und nutzt ausschließlich Clusterpunkte; zusätzliche Transformationen oder Hilfsdaten sind nicht notwendig. Dadurch bleibt der gesamte Schritt deterministisch und gut kontrollierbar.
+
+\subsection{AABB}
+\label{sec:aabb}
+Die AABB wird durch die minimalen und maximalen Koordinaten je Achse bestimmt:
+\(x_{\min},x_{\max},y_{\min},y_{\max},z_{\min},z_{\max}\). Zentrum und Kantenlängen ergeben sich zu
+\[\mathbf{c}=\tfrac{1}{2}\bigl((x_{\min},y_{\min},z_{\min})^\top+(x_{\max},y_{\max},z_{\max})^\top\bigr),\quad
+ L=x_{\max}-x_{\min},\; W=y_{\max}-y_{\min},\; H=z_{\max}-z_{\min}.
+\]
+
+In der Implementierung besteht der Aufwand nur aus sechs Min-/Max-Suchen und drei Differenzen, skaliert damit linear mit der
+Punktanzahl und bleibt deterministisch reproduzierbar – selbst bei grobem Downsampling. Ausreißer lassen sich vorab durch
+einfache Filter entfernen, sodass die Min-/Max-Suche stabile Boxen liefert.
+
+Nachteil der AABB ist, dass sie die Orientierung des Objekts nicht abbildet und bei stark gedrehten Objekten in der Draufsicht
+(\ac{BEV}) eine größere Grundfläche einnimmt als nötig. Für Fahrszenarien mit überwiegend längs ausgerichteten Verkehrsteilnehmern
+ist dieser Effekt jedoch beherrschbar, solange nachgelagerte Filter (z.\,B. Größenprüfung) geeignete Toleranzen besitzen.
+
+\subsection{OBB}
+\label{sec:obb}
+Die OBB richtet die Box entlang der Hauptachsen des Punktverteilungstensors aus. Praktisch wird dies in \ac{PCL} über die Trägheits-/PCA-Schätzung realisiert (z.\,B. \texttt{pcl::MomentOfInertiaEstimation}) \parencite{pcl_docs_2025}. Vorteile: kompaktere Umhüllung bei deutlich orientierten, elongierten Objekten (Fahrzeuge, Leitplanken); die abgeleitete Yaw kann nachgelagert genutzt werden. Nachteile: höhere Rechenkosten und potenzielle Instabilitäten bei kleinen, teilverdeckten oder nahezu isotropen Clustern (Rauscheinfluss, Sprünge der Hauptachsen). Eine alternative, zweidimensionale Näherung ist die Bestimmung eines Minimalrechtecks in der Draufsicht (\ac{BEV}), welches besonders stabile Yaw-Werte für straßennahe Objekte liefert; diese Option ist mit geringem Mehraufwand realisierbar und lässt sich mit AABB kombinieren (AABB für \(L,W,H\), Yaw aus \ac{BEV}). Abbildung~\ref{fig:bev_minarea} reserviert Platz für eine entsprechende Darstellung.
+
+\subsection{Vergleich AABB vs. OBB und Wahl in dieser Arbeit}
+\textbf{AABB} arbeiten sehr schnell, stabil und deterministisch, bilden jedoch keine Orientierung ab und neigen bei stark gedrehten Objekten zu einer größeren Grundfläche. \textbf{OBB} liefern dagegen eine orientierte und bei elongierten Strukturen meist kompaktere Hülle, erfordern aber mehr Rechenaufwand, reagieren empfindlicher auf Ausdünnung oder Teilsicht und können dadurch sprunghaft wechseln.
+
+Für die Versuchsumgebung wurden beide Ansätze implementiert und mit denselben Punktwolken ausgewertet. Die OBB-Variante liefert
+für gut ausgeprägte, längliche Fahrzeuge tatsächlich kompaktere Hüllen und eine nutzbare Yaw-Schätzung. Bei teilverdeckten oder
+kleinen Clustern (z.\,B. Poller, Fußgänger) kam es jedoch zu instabilen Hauptachsen und sprunghaften Orientierungen, was nachgelagert
+die Datenassoziation im Tracking erschwerte.
+
+Die AABB erreichte demgegenüber konsistent stabile Abmessungen und reagierte kaum empfindlich auf Ausdünnung oder temporäre
+Okklusionen. In Kombination mit einem BEV-Minimalrechteck (nur für die Yaw-Schätzung) ließe sich der Orientierungsnachteil
+weiter reduzieren, ohne die AABB-Orientierung vollständig zu ersetzen. Aus Gründen der Robustheit und Echtzeitfähigkeit wird
+daher in dieser Arbeit \textbf{AABB} als Standard gewählt; OBB bleibt optional für spezielle Auswertungen verfügbar.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{Bilder/aabb_obb_compare.png}
+  \caption{Vergleich der Bounding-Box-Modelle: oriented bounding boxes (OBB, Mitte) gegenüber axis-aligned bounding boxes (AABB, rechts) anhand derselben Punktwolke (links). (2025-10-15-VK-OL-005)}
+  \label{fig:aabb_obb_compare}
+\end{figure}
+
+Hauptgründe für diese Wahl sind die hohe Stabilität der Boxen unter realen Sensorbedingungen (variable Punktdichte, Okklusionen) und die geringen Rechenkosten, die die Echtzeitfähigkeit der Gesamtkette sichern. Die Orientierung kann optional aus nachfolgenden Schritten (z.\,B. in \ac{BEV}) geschätzt werden, ohne die Boxbildung zu destabilisieren. Eine OBB-Erweiterung bleibt als künftige Verbesserung vorgesehen, sobald robuste Orientierungsmerkmale (etwa ein \ac{BEV}-MinArea-Rechteck) zuverlässig verfügbar sind. Abbildung~\ref{fig:aabb_obb_compare} zeigt den praktischen Unterschied.
+
+\section{Implementierung}
+\label{sec:implementierung_cluster_boxes}
+
+Die Umsetzung erfolgt auf Basis von \ac{PCL} und \ac{ROS}~2 als durchgängige Verarbeitungskette. Auf dem Topic \texttt{/obstacle\_points} wird die \emph{EuclideanClusterExtraction} mit einer KdTree-Struktur angewendet, um Punktwolken in einzelne Objekte zu segmentieren. Die resultierenden Cluster werden anschließend sowohl als Marker für \ac{RViz} visualisiert als auch in Form eines \texttt{vision\_msgs/Detection3DArray} veröffentlicht. Die Verarbeitungskette ist darauf ausgelegt, deterministische Latenzen und eine robuste Plausibilisierung der Objekte sicherzustellen.
+
+Als Eingabe dient das Topic \texttt{/obstacle\_points} mit dem Nachrichtentyp \texttt{sensor\_msgs/PointCloud2} unter Verwendung des \emph{SensorDataQoS}-Profils. Als Ausgabe werden die geschätzten Objektboxen in einem \texttt{vision\_msgs/Detection3DArray} bereitgestellt, welches Zentrum, Ausmaße und optional die Orientierung umfasst. Zusätzlich erfolgt eine parallele Veröffentlichung als \ac{RViz}-Marker zur visuellen Kontrolle. Für den Sensorpfad wird ein \emph{BestEffort}-Profil mit \emph{KeepLast} (Tiefe \(\leq 4\)) verwendet, während die Ergebnis-Topics zuverlässig (\emph{reliable}) übertragen werden. Eine harte Obergrenze \texttt{max\_clusters} sowie die Vorallokation der Speicherstrukturen verhindern Latenzspitzen bei dichter Punktbelegung.
+
+Zur Unterdrückung von Rauschen und großflächigen Artefakten werden größenbasierte Filter eingesetzt. Objekte, deren geschätzte Ausmaße außerhalb plausibler Grenzen liegen – etwa extrem flache Fassaden oder unrealistisch große Boxen – werden verworfen. Die Parameter \(\varepsilon\), \texttt{min\_cluster\_size} und die Grenzen der Größenfilter sind direkt mit der Auflösung des Voxel-Downsamplings zu koppeln. Eine praxisnahe Faustregel ist \(\varepsilon \approx 2 \dots 3 \times \texttt{voxel\_size}\). Für die Schätzung der Höhe \(H\) eignen sich robuste Perzentilschätzer, um Ausreißer in vertikaler Richtung zu kompensieren.
+
+Die Kombination aus Voxel-Downsampling, KdTree-Suche und einer festen Maximalzahl an Clustern ermöglicht eine stabile Verarbeitung in Echtzeit. Zudem wird bewusst auf Axis-Aligned Bounding Boxes (AABB) statt auf rechenintensivere OBBs zurückgegriffen, da AABBs bei Fahrzeugumgebungen als numerisch stabil und ausreichend präzise gelten. Insgesamt führt dieser Aufbau zu einer effizienten Segmentierung mit konstanten Antwortzeiten und gut kontrollierbaren Ressourcenanforderungen.
+
+\section{Ergebnis}
+\label{sec:ergebnis_cluster_boxes}
+In den Experimenten liefert die Verarbeitungskette konsistente Boxen bei moderatem Rechenaufwand. Die AABB-Wahl erweist sich als robust gegenüber variabler Punktdichte und Teilokklusion.
+
+Abbildung~\ref{fig:clustering_result} zeigt den Cluster eines detektierten Pkw mit AABB-Dimensionen.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.4\textwidth]{Bilder/clustering_result.png}
+  \caption{Detektierter Fahrzeug-Cluster mit AABB-Dimensionen (3.18 × 2.01 × 1.17 m) (2025-10-15-VK-OL-005)}
+  \label{fig:clustering_result}
+\end{figure}
