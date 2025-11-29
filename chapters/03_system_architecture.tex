@@ -16,60 +16,60 @@ Die detaillierten Anforderungen und dazugehörigen Messkriterien sind in Tabelle
 
   \begin{table}[H]
     \centering
-\begin{tabularx}{\textwidth}{|c|X|X|}
-\hline
+\begin{tabularx}{\textwidth}{cXX}
+\toprule
 \textbf{Nr.} & \textbf{Anforderung} & \textbf{Messkriterium} \\
-\hline
+\midrule
 
 1 &
 OS1-Punktwolken werden empfangen &
 Topic \texttt{/ouster/points}; Rate $\geq 10$ Hz, Paketverlust $<1\,\%$ \\[0.15cm]
-\hline
+\midrule
 
 2 &
 Objektliste mit Pose und Abmessungen &
 Aktualisierungsrate $\geq 10$ Hz; Track-IDs konsistent über $\geq 5$ Frames \\[0.15cm]
-\hline
+\midrule
 
 3 &
 Bodenpunkte und Störsignale entfernen &
 Restbodenanteil $<5\,\%$ je $2\,\text{m}$-Raster; Verlust tragender Objektpunkte $<10\,\%$ im Frontbereich \\[0.15cm]
-\hline
+\midrule
 
 4 &
 Reduzierte Punktdichte ohne wesentlichen Geometrieverlust &
 Voxelgröße 5--10 cm; Punktdichte $\geq70\,\%$ im $3\,\text{m}$-Gitter; Kantenabweichung $<0{,}1$ m \\[0.15cm]
-\hline
+\midrule
 
 5 &
 Laufzeitparameter anpassbar &
 Voxelgröße, \ac{RANSAC}-Abstand/Iterationen, Cluster-Toleranz und Clustergrößen via Launch oder \texttt{ros2 param set} ohne Neustart \\[0.15cm]
-\hline
+\midrule
 
 6 &
 End-to-End-Latenz <100 ms bei 10 Hz &
 Zeitstempel-Differenz Ein-/Ausgang; stabile 10 Hz \\[0.15cm]
-\hline
+\midrule
 
 7 &
 Stabiler Betrieb auf Standardhardware &
 CPU/RAM-Auslastung $\leq 60\,\%$ auf 6-Kern-CPU (\(\geq 2{,}5\,\text{GHz}\), \(\geq 16\,\text{GB}\) RAM) bei stabilen $10\,\mathrm{Hz}$ \\[0.15cm]
-\hline
+\midrule
 
 8 &
 Maschinen- und terminallesbare Ausgabe &
 \ac{ROS}-Themen mit dokumentierten Typen (\texttt{sensor\_msgs/PointCloud2}, \texttt{vision\_msgs/Detection3DArray}); Konsolenstatus $\leq 1$ Zeile/s \\[0.15cm]
-\hline
+\midrule
 
 9 &
 Integration in bestehende GUI &
 Algorithmus ausführbar bei den Moden Sensor, Sensor + PC, Sensor + PC + Embedded PC \\[0.05cm]
-\hline
+\midrule
 
 10 &
 Echtzeitvisualisierung &
 Darstellung von Rohdaten, Bodenfilter, Clustern und Tracks in RViz2/GUI mit $\geq 10\,\text{\ac{FPS}}$ \\[0.05cm]
-\hline
+\bottomrule
 
 \end{tabularx}
 \caption{Anforderungen an die Verarbeitungskette mit zugehörigen Messkriterien}
@@ -262,27 +262,32 @@ Die Tabelle ~\ref{tab:qos-topics} zeigt die \ac{QoS}-Profile der in dieser Arbei
 \setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.15}
 
-\begin{tabularx}{\textwidth}{|l|c|l|l|X|}
-\hline
+\begin{tabularx}{\textwidth}{lcllX}
+\toprule
 \textbf{Knoten} & \textbf{Rolle} & \textbf{Topic} & \textbf{Typ} & \textbf{\ac{QoS}} \\
-\hline
+\midrule
 
-crop\_box\_node & Sub & \texttt{/ouster/points} & PointCloud2       & SensorDataQoS (Best Effort) \\ \hline
-crop\_box\_node & Pub & \texttt{/points\_cropped} & PointCloud2     & SensorDataQoS (Best Effort) \\ \hline
+crop\_box\_node & Sub & \texttt{/ouster/points} & PointCloud2       & SensorDataQoS (Best Effort) \\
+crop\_box\_node & Pub & \texttt{/points\_cropped} & PointCloud2     & SensorDataQoS (Best Effort) \\
+\midrule
 
-voxel\_filter\_node & Sub & \texttt{/points\_cropped} & PointCloud2    & SensorDataQoS (Best Effort) \\ \hline
-voxel\_filter\_node & Pub & \texttt{/points\_voxel} & PointCloud2      & SensorDataQoS (Reliable) \\ \hline
+voxel\_filter\_node & Sub & \texttt{/points\_cropped} & PointCloud2    & SensorDataQoS (Best Effort) \\
+voxel\_filter\_node & Pub & \texttt{/points\_voxel} & PointCloud2      & SensorDataQoS (Reliable) \\
+\midrule
 
-ransac\_ground\_node & Sub & \texttt{/points\_voxel} & PointCloud2      & SensorDataQoS (Best Effort) \\ \hline
-ransac\_ground\_node & Pub & \texttt{/obstacle\_points} & PointCloud2   & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
+ransac\_ground\_node & Sub & \texttt{/points\_voxel} & PointCloud2      & SensorDataQoS (Best Effort) \\
+ransac\_ground\_node & Pub & \texttt{/obstacle\_points} & PointCloud2   & rclcpp::\ac{QoS}(10) (Reliable) \\
+\midrule
 
-cluster\_extraction\_node & Sub & \texttt{/obstacle\_points} & PointCloud2  & SensorDataQoS (Best Effort) \\ \hline
-cluster\_extraction\_node & Pub & \texttt{/detections\_markers} & MarkerArray & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
-cluster\_extraction\_node & Pub & \texttt{/detections\_raw} & Detection3DArray & SensorDataQoS (Best Effort) \\ \hline
+cluster\_extraction\_node & Sub & \texttt{/obstacle\_points} & PointCloud2  & SensorDataQoS (Best Effort) \\
+cluster\_extraction\_node & Pub & \texttt{/detections\_markers} & MarkerArray & rclcpp::\ac{QoS}(10) (Reliable) \\
+cluster\_extraction\_node & Pub & \texttt{/detections\_raw} & Detection3DArray & SensorDataQoS (Best Effort) \\
+\midrule
 
-sort\_tracker\_node & Sub & \texttt{/detections\_raw} & Detection3DArray & SensorDataQoS (Best Effort) \\ \hline
-sort\_tracker\_node & Pub & \texttt{/tracks\_raw} & Detection3DArray  & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
-sort\_tracker\_node & Pub & \texttt{/tracks\_markers} & MarkerArray     & rclcpp::\ac{QoS}(10) (Reliable) \\ \hline
+sort\_tracker\_node & Sub & \texttt{/detections\_raw} & Detection3DArray & SensorDataQoS (Best Effort) \\
+sort\_tracker\_node & Pub & \texttt{/tracks\_raw} & Detection3DArray  & rclcpp::\ac{QoS}(10) (Reliable) \\
+sort\_tracker\_node & Pub & \texttt{/tracks\_markers} & MarkerArray     & rclcpp::\ac{QoS}(10) (Reliable) \\
+\bottomrule
 
 \end{tabularx}
 
@@ -300,22 +305,22 @@ Ouster OS1-Daten werden als \texttt{sensor\_msgs/PointCloud2} publiziert. Tabell
   \setlength{\tabcolsep}{6pt} % réduit l'espace horizontal
   \renewcommand{\arraystretch}{1.05} % compacte verticalement
 
-  \begin{tabular}{|p{2.2cm}|p{13cm}|}
-    \hline
-    \textbf{Feld} & \textbf{Bedeutung} \\ \hline
+  \begin{tabular}{p{2.2cm}p{13cm}}
+    \toprule
+    \textbf{Feld} & \textbf{Bedeutung} \\ \midrule
 
     \texttt{x, y, z} &
-    Kartesische Koordinaten (m) im \texttt{frame\_id}. 
-    Rechtsdrehendes System nach REP~103: \(x\) vorwärts, \(y\) links, \(z\) oben. \\ \hline
+    Kartesische Koordinaten (m) im \texttt{frame\_id}.
+    Rechtsdrehendes System nach REP~103: \(x\) vorwärts, \(y\) links, \(z\) oben. \\ \midrule
 
     \texttt{intensity} &
-    Reflektierte Signalstärke (\texttt{uint16}); abhängig von Sensorkalibrierung und daher nur innerhalb eines Scans vergleichbar. \\ \hline
+    Reflektierte Signalstärke (\texttt{uint16}); abhängig von Sensorkalibrierung und daher nur innerhalb eines Scans vergleichbar. \\ \midrule
 
     \texttt{ring} &
-    Vertikaler Kanalindex (Laser/Detektor). Beim OS1-64: 64 Ringe von 0 (unten) bis 63 (oben). \\ \hline
+    Vertikaler Kanalindex (Laser/Detektor). Beim OS1-64: 64 Ringe von 0 (unten) bis 63 (oben). \\ \midrule
 
     \texttt{time} &
-    Zeitversatz eines Punktes relativ zu \texttt{header.stamp} (s); wichtig für Motion Compensation innerhalb eines Scans. \\ \hline
+    Zeitversatz eines Punktes relativ zu \texttt{header.stamp} (s); wichtig für Motion Compensation innerhalb eines Scans. \\ \bottomrule
 
   \end{tabular}
 

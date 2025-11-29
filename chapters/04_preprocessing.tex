@@ -40,13 +40,13 @@ Neben den Pflichtfeldern \(x,y,z\) unterstützt der Node optionale Felder (\text
 
 \begin{table}[H]
   \centering
-  \begin{tabular}{|l|c|}
-    \hline
-    \textbf{Parametername} & \textbf{Startwert} \\ \hline
-    \texttt{input\_topic}  & \texttt{/ouster/points} \\ \hline
-    \texttt{output\_topic} & \texttt{/points\_cropped} \\ \hline
-    \texttt{min\_bound}    & \([-20.0, -15.0, -3.0]\) \\ \hline
-    \texttt{max\_bound}    & \([20.0, 15.0, 5.0]\) \\ \hline
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Parametername} & \textbf{Startwert} \\ \midrule
+    \texttt{input\_topic}  & \texttt{/ouster/points} \\
+    \texttt{output\_topic} & \texttt{/points\_cropped} \\
+    \texttt{min\_bound}    & \([-20.0, -15.0, -3.0]\) \\
+    \texttt{max\_bound}    & \([20.0, 15.0, 5.0]\) \\ \bottomrule
   \end{tabular}
   \caption{Startparameter des CropBox-Filters}
   \label{tab:cropbox_params}
@@ -153,12 +153,12 @@ sind in Tabelle~\ref{tab:voxel_params} zusammengefasst.
 % préambule : \usepackage{booktabs} (optionnel, pour un rendu plus pro)
 \begin{table}[H]
   \centering
-  \begin{tabular}{|l|c|}
-    \hline
-    \textbf{Parametername} & \textbf{Startwert} \\ \hline
-    \texttt{input\_topic}  & \texttt{points\_cropped} \\ \hline
-    \texttt{output\_topic} & \texttt{points\_voxel} \\ \hline
-    \texttt{voxel\_size}   & \SI{0,20}{\meter} \\ \hline
+  \begin{tabular}{lc}
+    \toprule
+    \textbf{Parametername} & \textbf{Startwert} \\ \midrule
+    \texttt{input\_topic}  & \texttt{points\_cropped} \\
+    \texttt{output\_topic} & \texttt{points\_voxel} \\
+    \texttt{voxel\_size}   & \SI{0,20}{\meter} \\ \bottomrule
   \end{tabular}
   \caption{Startparameter des VoxelGrid-Filters}
   \label{tab:voxel_params}

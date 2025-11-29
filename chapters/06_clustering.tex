@@ -41,13 +41,13 @@ Richtwerte im Zusammenspiel mit einem Voxel-Filter (Voxelkantenlänge \(\approx\
 
 \begin{table}[H]
   \centering
-  \begin{tabular}{|l|c|p{8cm}|}
-    \hline
-    \textbf{Parameter} & \textbf{Beispiel} & \textbf{Bedeutung} \\ \hline
-    \texttt{cluster\_tolerance} & \(0{,}5\,\mathrm{m}\) & Verknüpfungsschwelle in der euklidischen Nachbarschaft \\ \hline
-    \texttt{min\_cluster\_size} & 40 & Rauschunterdrückung, minimale Punktzahl \\ \hline
-    \texttt{max\_cluster\_size} & 8000 & Obergrenze zur Begrenzung großer Flächen/Hecken \\ \hline
-    \texttt{max\_clusters} & 200 & Harte Obergrenze pro Frame (Zeitbudget/Determinismus) \\ \hline
+  \begin{tabular}{lcp{8cm}}
+    \toprule
+    \textbf{Parameter} & \textbf{Beispiel} & \textbf{Bedeutung} \\ \midrule
+    \texttt{cluster\_tolerance} & \(0{,}5\,\mathrm{m}\) & Verknüpfungsschwelle in der euklidischen Nachbarschaft \\
+    \texttt{min\_cluster\_size} & 40 & Rauschunterdrückung, minimale Punktzahl \\
+    \texttt{max\_cluster\_size} & 8000 & Obergrenze zur Begrenzung großer Flächen/Hecken \\
+    \texttt{max\_clusters} & 200 & Harte Obergrenze pro Frame (Zeitbudget/Determinismus) \\ \bottomrule
   \end{tabular}
   \caption{Parameter der euklidischen Clusterung (Richtwerte in den Experimenten).}
   \label{tab:cluster_params_new}

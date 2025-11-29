@@ -15,33 +15,33 @@ Die wichtigsten Anforderungen an ein Bodensegmentierungsverfahren lassen sich na
 \centering
 \renewcommand{\arraystretch}{1.3} % augmente l'espacement vertical
 \setlength{\tabcolsep}{8pt}       % ajuste l'espacement horizontal
-\begin{tabular}{|p{4cm}|p{9.5cm}|}
-\hline
-\textbf{Kriterium} & \textbf{Beschreibung} \\ \hline
+\begin{tabular}{p{4cm}p{9.5cm}}
+\toprule
+\textbf{Kriterium} & \textbf{Beschreibung} \\ \midrule
 
-\textbf{Echtzeitfähigkeit} & 
-Das Verfahren muss Punktwolken in Echtzeit verarbeiten können (z.\,B. <100\,ms pro Frame), 
-um eine kontinuierliche Fahrzeugsteuerung zu ermöglichen. \\ \hline
+\textbf{Echtzeitfähigkeit} &
+Das Verfahren muss Punktwolken in Echtzeit verarbeiten können (z.\,B. <100\,ms pro Frame),
+um eine kontinuierliche Fahrzeugsteuerung zu ermöglichen. \\ \midrule
 
-\textbf{Rechenaufwand} & 
-Geringe Rechen- und Speicheranforderungen sind notwendig, 
-da die Algorithmen häufig auf eingebetteten Systemen mit begrenzten Ressourcen laufen. \\ \hline
+\textbf{Rechenaufwand} &
+Geringe Rechen- und Speicheranforderungen sind notwendig,
+da die Algorithmen häufig auf eingebetteten Systemen mit begrenzten Ressourcen laufen. \\ \midrule
 
-\textbf{Segmentierungs\-robustheit} & 
-Das Verfahren sollte robust gegenüber Über- und Untersegmentierung sein 
-und Bodenpunkte korrekt von Hindernissen trennen. \\ \hline
+\textbf{Segmentierungs\-robustheit} &
+Das Verfahren sollte robust gegenüber Über- und Untersegmentierung sein
+und Bodenpunkte korrekt von Hindernissen trennen. \\ \midrule
 
-\textbf{Leistung bei steigenden Hindernissen} & 
-Die Methode sollte sanft ansteigende Strukturen (z.\,B. Rampen oder Bordsteine) 
-korrekt als Teil des Bodens erkennen. \\ \hline
+\textbf{Leistung bei steigenden Hindernissen} &
+Die Methode sollte sanft ansteigende Strukturen (z.\,B. Rampen oder Bordsteine)
+korrekt als Teil des Bodens erkennen. \\ \midrule
 
-\textbf{Leistung bei unebenem Gelände} & 
-Auch bei Neigungen oder unregelmäßigen Bodenoberflächen 
-muss die Bodenschätzung stabil bleiben. \\ \hline
+\textbf{Leistung bei unebenem Gelände} &
+Auch bei Neigungen oder unregelmäßigen Bodenoberflächen
+muss die Bodenschätzung stabil bleiben. \\ \midrule
 
-\textbf{Leistung bei spärlichen Daten} & 
-Das Verfahren sollte bei geringer Punktdichte (z.\,B. großer Abstand zum Sensor) 
-zuverlässige Ergebnisse liefern. \\ \hline
+\textbf{Leistung bei spärlichen Daten} &
+Das Verfahren sollte bei geringer Punktdichte (z.\,B. großer Abstand zum Sensor)
+zuverlässige Ergebnisse liefern. \\ \bottomrule
 \end{tabular}
 
 \vspace{5pt}
@@ -54,13 +54,13 @@ Aus den sechs Anforderungen werden für die weitere Analyse vier Bewertungskrite
 \begin{table}[H]
 \centering
 \renewcommand{\arraystretch}{1.2}
-\begin{tabular}{|c|p{4cm}|p{9cm}|}
-\hline
-\textbf{Nr.} & \textbf{Kriterium} & \textbf{Beschreibung} \\ \hline
-1 & Echtzeitfähigkeit & Bewertet, ob die Methode unter den gegebenen Rechenbedingungen (10\,Hz Sensorrate) eine kontinuierliche Verarbeitung der Punktwolke in Echtzeit ermöglicht. \\ \hline
-2 & Robustheit & Misst die Widerstandsfähigkeit gegenüber Rauschen, Ausreißern und unterschiedlichen Geländetypen (z.\,B. unebenes Terrain oder variable Punktdichten). \\ \hline
-3 & Genauigkeit & Beschreibt die Fähigkeit der Methode, die Bodenpunkte präzise von Nicht-Bodenpunkten zu trennen und somit eine zuverlässige Segmentierung zu gewährleisten. \\ \hline
-4 & Rechenaufwand & Bewertet den benötigten Ressourcenverbrauch (CPU/GPU-Zeit und Speicherbedarf) für die Durchführung der Bodensegmentierung. \\ \hline
+\begin{tabular}{cp{4cm}p{9cm}}
+\toprule
+\textbf{Nr.} & \textbf{Kriterium} & \textbf{Beschreibung} \\ \midrule
+1 & Echtzeitfähigkeit & Bewertet, ob die Methode unter den gegebenen Rechenbedingungen (10\,Hz Sensorrate) eine kontinuierliche Verarbeitung der Punktwolke in Echtzeit ermöglicht. \\ \midrule
+2 & Robustheit & Misst die Widerstandsfähigkeit gegenüber Rauschen, Ausreißern und unterschiedlichen Geländetypen (z.\,B. unebenes Terrain oder variable Punktdichten). \\ \midrule
+3 & Genauigkeit & Beschreibt die Fähigkeit der Methode, die Bodenpunkte präzise von Nicht-Bodenpunkten zu trennen und somit eine zuverlässige Segmentierung zu gewährleisten. \\ \midrule
+4 & Rechenaufwand & Bewertet den benötigten Ressourcenverbrauch (CPU/GPU-Zeit und Speicherbedarf) für die Durchführung der Bodensegmentierung. \\ \bottomrule
 \end{tabular}
 \caption{Bewertungskriterien zur Analyse der Bodensegmentierungsmethoden.}
 \label{tab:bewertungskriterien}
@@ -211,14 +211,14 @@ Sie verdeutlicht die jeweiligen Stärken und Grenzen der Ansätze sowie ihre typ
 \begin{table}[H]
 \centering
 \renewcommand{\arraystretch}{1.2}
-\begin{tabular}{|p{3.5cm}|p{4cm}|p{4cm}|p{3cm}|}
-\hline
-\textbf{Methodenkategorie} & \textbf{Vorteile} & \textbf{Nachteile} & \textbf{Typisches Einsatzgebiet} \\ \hline
-2.5D-Gitterbasierte Verfahren & Geringe Rechenlast, robust auf ebenem Gelände & Begrenzte Genauigkeit bei Überhängen oder Brücken & Stadt- und Straßenszenarien \\ \hline
-Bodenmodellierung & Hohe Präzision, einfache mathematische Umsetzung & Geringe Robustheit bei komplexen Oberflächenformen & Flaches bis leicht geneigtes Terrain \\ \hline
-Lokale Merkmalsanalyse & Unempfindlich gegenüber Dichteänderungen & Starke Abhängigkeit von Parameterwahl und Sensorgeometrie & Dynamische oder unstrukturierte Umgebungen \\ \hline
-Probabilistische Graphmodelle (MRF/CRF) & Hohe Konsistenz durch Nachbarschaftsbeziehungen & Hohe Rechenkomplexität, geringe Echtzeitfähigkeit & Forschungs- und Entwicklungsumgebungen \\ \hline
-Lernbasierte Verfahren & Sehr hohe Genauigkeit, anpassungsfähig durch Training & Großer Trainings- und Hardwareaufwand & Autonomes Fahren, Echtzeit-Perzeption \\ \hline
+\begin{tabular}{p{3.5cm}p{4cm}p{4cm}p{3cm}}
+\toprule
+\textbf{Methodenkategorie} & \textbf{Vorteile} & \textbf{Nachteile} & \textbf{Typisches Einsatzgebiet} \\ \midrule
+2.5D-Gitterbasierte Verfahren & Geringe Rechenlast, robust auf ebenem Gelände & Begrenzte Genauigkeit bei Überhängen oder Brücken & Stadt- und Straßenszenarien \\ \midrule
+Bodenmodellierung & Hohe Präzision, einfache mathematische Umsetzung & Geringe Robustheit bei komplexen Oberflächenformen & Flaches bis leicht geneigtes Terrain \\ \midrule
+Lokale Merkmalsanalyse & Unempfindlich gegenüber Dichteänderungen & Starke Abhängigkeit von Parameterwahl und Sensorgeometrie & Dynamische oder unstrukturierte Umgebungen \\ \midrule
+Probabilistische Graphmodelle (MRF/CRF) & Hohe Konsistenz durch Nachbarschaftsbeziehungen & Hohe Rechenkomplexität, geringe Echtzeitfähigkeit & Forschungs- und Entwicklungsumgebungen \\ \midrule
+Lernbasierte Verfahren & Sehr hohe Genauigkeit, anpassungsfähig durch Training & Großer Trainings- und Hardwareaufwand & Autonomes Fahren, Echtzeit-Perzeption \\ \bottomrule
 \end{tabular}
 \caption{Vergleich der Bodensegmentierungsmethoden in Bezug auf Rechenaufwand, Robustheit und Einsatzgebiet (nach~\cite{gomes2023survey}).}
 \label{tab:vergleich_bodenmethoden}
@@ -227,24 +227,24 @@ Lernbasierte Verfahren & Sehr hohe Genauigkeit, anpassungsfähig durch Training 
 \begin{table}[h!]
   \centering
   \renewcommand{\arraystretch}{1.2}
-  \resizebox{\textwidth}{!}{%
-    \begin{tabular}{|l|c|c|c|c|}
-      \hline
-      \textbf{Methode} & \textbf{Echtzeitfähigkeit} & \textbf{Robustheit} & \textbf{Genauigkeit} & \textbf{Rechenaufwand} \\
-      \hline
-      2.5D-Gitterbasierte Verfahren & Hoch (Zellstatistiken pro Raster) & Mittel (stabil bei moderaten Höhenänderungen) & Mittel (verlustbehaftete 2.5D-Projektion) & Gering \\ \hline
-      \ac{RANSAC}-Ebenenanpassung (Plane Fitting) & Mittel (Iterationsbudget begrenzt Laufzeit) & Hoch (ausreißerresistent) & Hoch (präzise Ebenenmodellierung) & Mittel bis hoch \\ \hline
-      Linienextraktion entlang Scanlinien & Hoch (lineare Fits pro Strahl) & Niedrig bis mittel (empfindlich auf unebenes Gelände) & Mittel & Sehr gering \\ \hline
-      Gaussian Process Regression (GPR) & Niedrig (aufwändige Kernelberechnung) & Hoch (passt sich lokalem Terrain an) & Hoch & Hoch \\ \hline
-      Kanalbasierte Verfahren (gradientenbasiert) & Hoch (schlanke Schwellenwertlogik) & Mittel (parametergängig, sensorgeometrieabhängig) & Mittel & Gering \\ \hline
-      Region-Growing / graphenbasiertes Clustering & Niedrig bis mittel (iterative Nachbarschaftsprüfung) & Mittel bis hoch (reduziert Fehlklassifikationen) & Hoch & Mittel bis hoch \\ \hline
-      Range-Image-Methoden & Hoch (2D-Nachbarschaften in Millisekunden) & Mittel (robust gegen Rauschen, sensibel bei Überhängen) & Mittel bis hoch & Gering bis mittel \\ \hline
-      Probabilistische Graphmodelle (MRF/CRF) & Niedrig (iterative Inferenz) & Hoch (konsistente Nachbarschaftsmodellierung) & Hoch & Hoch \\ \hline
-      Point-/Voxel-basierte Netze (PointNet, PointPillars) & Mittel (GPU-Echtzeit bei optimierter Implementierung) & Hoch (lernbasierte Generalisierung) & Sehr hoch & Hoch \\ \hline
-      Bildbasierte CNNs auf Range Images (z.B. RangeNet++) & Hoch (2D-CNN-Inferenz auf GPU) & Mittel bis hoch (robust auf strukturierten Projektionen) & Hoch & Mittel bis hoch \\ \hline
-      Spezialisierte Netze (GndNet) & Hoch (Inference $\approx$ 18\,ms/Frame) & Mittel bis hoch (geländeadaptiv trainierbar) & Hoch (\ac{IoU} $\approx$ 84\,\%) & Mittel \\ \hline
-    \end{tabular}%
-  }
+    \begin{tabularx}{\textwidth}{Xcccc}
+      \toprule
+      \textbf{Methode} & \textbf{Echtzeit} & \textbf{Robustheit} & \textbf{Genauigkeit} & \textbf{Aufwand} \\
+      \midrule
+      2.5D-Gitterbasierte Verfahren & + & o & o & - \\ \midrule
+      \ac{RANSAC}-Ebenenanpassung (Plane Fitting) & o & + & + & o/+ \\ \midrule
+      Linienextraktion entlang Scanlinien & + & -/o & o & -- \\ \midrule
+      Gaussian Process Regression (GPR) & - & + & + & + \\ \midrule
+      Kanalbasierte Verfahren (gradientenbasiert) & + & o & o & - \\ \midrule
+      Region-Growing / graphenbasiertes Clustering & -/o & o/+ & + & o/+ \\ \midrule
+      Range-Image-Methoden & + & o & o/+ & -/o \\ \midrule
+      Probabilistische Graphmodelle (MRF/CRF) & - & + & + & + \\ \midrule
+      Point-/Voxel-basierte Netze (PointNet, PointPillars) & o & + & ++ & + \\ \midrule
+      Bildbasierte CNNs auf Range Images (z.B. RangeNet++) & + & o/+ & + & o/+ \\ \midrule
+      Spezialisierte Netze (GndNet) & + & o/+ & + & o \\ \bottomrule
+    \end{tabularx}%
+    \par\vspace{0.2cm}
+    {\footnotesize \textbf{Legende:} ++: sehr hoch, +: hoch, o: mittel, -: niedrig/gering, --: sehr gering. Kombinationen (z.\,B. o/+) kennzeichnen Zwischenstufen.}
   \caption{Vergleich der in Abschnitt~\ref{chap:bodenmethoden} beschriebenen Bodensegmentierungsmethoden nach Echtzeitfähigkeit, Robustheit, Genauigkeit und Rechenaufwand (nach~\cite{gomes2023survey}).}
   \label{tab:boden-methodenvergleich-ransac}
 \end{table}
@@ -292,13 +292,13 @@ Leere Eingaben werden verworfen, um unnötige Rechenarbeit zu vermeiden.
 Die wesentlichen Laufzeitparameter werden als \ac{ROS}-Parameter deklariert und können über Launch-Dateien oder \texttt{ros2 param} angepasst werden (Default-Werte aus dem Code):
 \begin{table}[h!]
 \centering
-\begin{tabular}{|l|c|l|}
-\hline
-\textbf{Parameter} & \textbf{Default} & \textbf{Bedeutung} \\ \hline
-\texttt{input\_topic} & \texttt{/points\_voxel} & Eingangs-Punktwolke (vorsegmentiert per VoxelGrid) \\ \hline
-\texttt{output\_topic} & \texttt{/obstacle\_points} & Ausgabe ohne Bodenpunkte \\ \hline
-\texttt{distance\_threshold} & \SI{0,15}{\meter} & maximaler Punkt-zu-Ebene-Abstand für Inlier \\ \hline
-\texttt{max\_iterations} & $1000$ & maximale \ac{RANSAC}-Iterationen \\ \hline
+\begin{tabular}{lcl}
+\toprule
+\textbf{Parameter} & \textbf{Default} & \textbf{Bedeutung} \\ \midrule
+\texttt{input\_topic} & \texttt{/points\_voxel} & Eingangs-Punktwolke (vorsegmentiert per VoxelGrid) \\
+\texttt{output\_topic} & \texttt{/obstacle\_points} & Ausgabe ohne Bodenpunkte \\
+\texttt{distance\_threshold} & \SI{0,15}{\meter} & maximaler Punkt-zu-Ebene-Abstand für Inlier \\
+\texttt{max\_iterations} & $1000$ & maximale \ac{RANSAC}-Iterationen \\ \bottomrule
 \end{tabular}
 \caption{\ac{RANSAC}-Parametrisierung des \texttt{ransac\_ground\_node}.}
 \label{tab:ransac_params}

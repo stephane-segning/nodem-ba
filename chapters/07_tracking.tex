@@ -103,13 +103,13 @@ Die Umsetzung erfolgt als \ac{ROS}~2\,--\,Knoten \texttt{tracking\_node}. Eingä
 
 \begin{table}[H]
   \centering
-  \begin{tabular}{|l|l|p{8.5cm}|}
-    \hline
-    \textbf{Parameter} & \textbf{Typ} & \textbf{Bedeutung} \\ \hline
-    \texttt{gate\_dist\_max} & [m] & euklidische Obergrenze des Gates (z.\,B. 3\,--\,4\,m) \\ \hline
-    \texttt{min\_hits} & [Frame] & Bestätigungsschwelle (2\,--\,3) \\ \hline
-    \texttt{max\_missed} & [Frame] & Löschschwelle ohne Zuordnung (6\,--\,10) \\ \hline
-    \texttt{max\_size\_L,W,H} & [m] & Plausibilitätsobergrenzen (z.\,B. L\,\(\leq\,8\), W\,\(\leq\,5\), H\,\(\leq\,4.2\)) \\ \hline
+  \begin{tabular}{llp{8.5cm}}
+    \toprule
+    \textbf{Parameter} & \textbf{Typ} & \textbf{Bedeutung} \\ \midrule
+    \texttt{gate\_dist\_max} & [m] & euklidische Obergrenze des Gates (z.\,B. 3\,--\,4\,m) \\
+    \texttt{min\_hits} & [Frame] & Bestätigungsschwelle (2\,--\,3) \\
+    \texttt{max\_missed} & [Frame] & Löschschwelle ohne Zuordnung (6\,--\,10) \\
+    \texttt{max\_size\_L,W,H} & [m] & Plausibilitätsobergrenzen (z.\,B. L\,\(\leq\,8\), W\,\(\leq\,5\), H\,\(\leq\,4.2\)) \\ \bottomrule
   \end{tabular}
     \caption{Wesentliche Parameter des Trackers .}
     \label{tab:tracking_params}
@@ -127,15 +127,15 @@ und Höhenintervalle der relevanten Objektkategorien, basierend auf den im
 
 \begin{table}[H]
 \centering
-\begin{tabular}{l|c|c|c}
-\hline
+\begin{tabular}{lccc}
+\toprule
 \textbf{Objektklasse} & \textbf{Länge [m]} & \textbf{Breite [m]} & \textbf{Höhe [m]} \\
-\hline
+\midrule
 Mensch            & 0.4 -- 0.8 & 0.3 -- 0.6 & 1.5 -- 2.0 \\
 Fahrradfahrer     & 1.2 -- 1.8 & 0.5 -- 0.8 & 1.4 -- 2.0 \\
 Pkw               & 3.8 -- 5.0 & 1.6 -- 2.0 & 1.4 -- 1.8 \\
 Lkw               & 6.0 -- 12.0 & 2.3 -- 2.6 & 3.0 -- 4.0 \\
-\hline
+\bottomrule
 \end{tabular}
 \caption{Typische Abmessungen der Objektklassen. Wertebereich basierend auf dem \textit{nuScenes} Dataset \cite{nuscenes}.}
 \label{tab:objektgroessen}
@@ -150,13 +150,13 @@ für typische Straßenszenen erwiesen.
 
 \begin{table}[H]
   \centering
-  \begin{tabular}{|l|c|c|c|}
-    \hline
-    \textbf{Objektklasse} & \textbf{Länge [m]} & \textbf{Breite [m]} & \textbf{Höhe [m]} \\ \hline
-    Mensch         & 0.3 -- 1.6  & 0.4 -- 1.0  & 1.0 -- 2.0 \\ \hline
-    Fahrradfahrer  & 0.6 -- 2.0  & 0.6 -- 1.5  & 0.4 -- 1.6 \\ \hline
-    Pkw            & 2.0 -- 4.5  & 1.4 -- 3.0  & 0.6 -- 2.1 \\ \hline
-    Lkw            & 4.5 -- 8.0  & 2.0 -- 5.0  & 2.0 -- 4.2 \\ \hline
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Objektklasse} & \textbf{Länge [m]} & \textbf{Breite [m]} & \textbf{Höhe [m]} \\ \midrule
+    Mensch         & 0.3 -- 1.6  & 0.4 -- 1.0  & 1.0 -- 2.0 \\
+    Fahrradfahrer  & 0.6 -- 2.0  & 0.6 -- 1.5  & 0.4 -- 1.6 \\
+    Pkw            & 2.0 -- 4.5  & 1.4 -- 3.0  & 0.6 -- 2.1 \\
+    Lkw            & 4.5 -- 8.0  & 2.0 -- 5.0  & 2.0 -- 4.2 \\ \bottomrule
   \end{tabular}
   \caption{Abmessungsbereiche der Zielklassen nach Bodenentfernung (Plausibilisierung und Heuristik).}
   \label{tab:class_dims}
