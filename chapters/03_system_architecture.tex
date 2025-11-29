@@ -10,7 +10,7 @@ Die Punktwolken des Ouster OS1 bilden die Ausgangsbasis einer durchgängigen Ver
 
 Die Hardware- und Softwareanforderungen bauen auf dieser Pipeline auf: Ziel ist eine End-to-End-Latenz von unter \(100\,\text{ms}\) bei \(10\,\text{Hz}\) mit moderatem Verbrauch von CPU- und RAM-Ressourcen. Alle \ac{ROS}~2-Nachrichten sind klar dokumentiert, und die Ausgaben lassen sich maschinell weiterverarbeiten oder im Terminal lesen. Die Zielplattform sind mobile Rechner oder Embedded-PCs mit mindestens sechs CPU-Kernen (\(\geq 2{,}5\,\text{GHz}\)) und \(\geq 16\,\text{GB}\) RAM, ohne spezialisierte GPU-Anforderungen. Die Integration in die GUI von \emph{Carception~X} \parencite{IFZN_Projekte} stellt sicher, dass alle Betriebsmodi (Sensor, Sensor + PC, Sensor + PC + Embedded PC) unterstützt werden \parencite{Wendel2025}.
 
-Die Leistungsbewertung nutzt klar definierte Kriterien: Der Restbodenanteil soll je Rasterzelle (\(2\,\text{m}\) \(\times\) \(2\,\text{m}\)) unter \(5\,\%\) bleiben, während tragende Objektpunkte im Frontbereich (\(30\,\text{m}\)) höchstens um \(10\,\%\) reduziert werden dürfen. Ein Downsampling gilt als verlustarm, wenn mindestens \(70\,\%\) der Ausgangsdichte in einem \(3\,\text{m}\)\(\times\) \(3\,\text{m}\)-Gitter erhalten bleibt und Bounding-Box-Kanten höchstens um \(0{,}1\,\text{m}\) vom Referenzwert abweichen. Laufzeitparameter wie Voxelgröße, \ac{RANSAC}-Abstandsgrenze und Iterationszahl, Cluster-Toleranz sowie Minimal- und Maximalpunktzahlen werden über Launch-Dateien oder \texttt{ros2 param set} ohne Neustart angepasst. Eine Echtzeitvisualisierung in RViz2 oder der GUI macht Rohdaten, Bodenfilter, Cluster und Tracks bei mindestens \(10\,\text{\ac{FPS}}\) sichtbar.
+Die Leistungsbewertung nutzt klar definierte Kriterien: Der Restbodenanteil soll je Rasterzelle (\(2\,\text{m}\) \(\times\) \(2\,\text{m}\)) unter \(5\,\%\) bleiben, während tragende Objektpunkte im Frontbereich (\(30\,\text{m}\)) höchstens um \(10\,\%\) reduziert werden dürfen. Ein Downsampling gilt als verlustarm, wenn mindestens \(70\,\%\) der Ausgangsdichte in einem \(3\,\text{m}\)\(\times\) \(3\,\text{m}\)-Gitter erhalten bleibt und Bounding-Box-Kanten höchstens um \(0{,}1\,\text{m}\) vom Referenzwert abweichen. Laufzeitparameter wie Voxelgröße, \ac{RANSAC}-Abstandsgrenze und Iterationszahl, Cluster-Toleranz sowie Minimal- und Maximalpunktzahlen werden über Launch-Dateien oder \texttt{ros2 param set} ohne Neustart angepasst. Eine Echtzeitvisualisierung in RViz2 oder der GUI macht Rohdaten, Bodenfilter, Cluster und Tracks sichtbar.
 
 Die detaillierten Anforderungen und dazugehörigen Messkriterien sind in Tabelle~\ref{tab:anforderungen_verarbeitungskette} zusammengefasst.
 
@@ -23,22 +23,22 @@ Die detaillierten Anforderungen und dazugehörigen Messkriterien sind in Tabelle
 
 1 &
 OS1-Punktwolken werden empfangen &
-Topic \texttt{/ouster/points}; Rate $\geq 10$ Hz, Paketverlust $<1\,\%$ \\[0.15cm]
+Topic \texttt{/ouster/points} \\[0.15cm]
 \midrule
 
 2 &
 Objektliste mit Pose und Abmessungen &
-Aktualisierungsrate $\geq 10$ Hz; Track-IDs konsistent über $\geq 5$ Frames \\[0.15cm]
+Track-IDs konsistent über $\geq 5$ Frames \\[0.15cm]
 \midrule
 
 3 &
 Bodenpunkte und Störsignale entfernen &
-Restbodenanteil $<5\,\%$ je $2\,\text{m}$-Raster; Verlust tragender Objektpunkte $<10\,\%$ im Frontbereich \\[0.15cm]
+\textbf{Minimierung des Restbodenanteils} \\[0.15cm]
 \midrule
 
 4 &
 Reduzierte Punktdichte ohne wesentlichen Geometrieverlust &
-Voxelgröße 5--10 cm; Punktdichte $\geq70\,\%$ im $3\,\text{m}$-Gitter; Kantenabweichung $<0{,}1$ m \\[0.15cm]
+Punktdichte $\geq70\,\%$ im $3\,\text{m}$-Gitter; \textbf{Hohe geometrische Genauigkeit} \\[0.15cm]
 \midrule
 
 5 &
@@ -68,7 +68,7 @@ Algorithmus ausführbar bei den Moden Sensor, Sensor + PC, Sensor + PC + Embedde
 
 10 &
 Echtzeitvisualisierung &
-Darstellung von Rohdaten, Bodenfilter, Clustern und Tracks in RViz2/GUI mit $\geq 10\,\text{\ac{FPS}}$ \\[0.05cm]
+Darstellung von Rohdaten, Bodenfilter, Clustern und Tracks in RViz2/GUI \\[0.05cm]
 \bottomrule
 
 \end{tabularx}

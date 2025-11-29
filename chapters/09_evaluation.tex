@@ -11,6 +11,7 @@ Die gewählte Detektionskette reagiert empfindlich auf Parameter, die Segmentier
 Die Datensätze wurden bei 9\,°C und bedecktem Himmel aufgezeichnet, womit witterungsbedingte Ausreißer minimiert sind. Die Verarbeitung erfolgte auf einem MEDION 15~E1 Laptop mit AMD Ryzen~5~7430U (6~Kerne/12~Threads) und 32~GB RAM.
 
 Der Fokus liegt bewusst auf den drei genannten Parametern, weil sie die größten Hebel entlang der Kette darstellen: \texttt{voxel\_size} steuert die Ausdünnung der Punktwolke (Rauschunterdrückung vs. Detailtreue), \texttt{distance_threshold} definiert die Inlier-Schwelle der Bodensegmentierung und \texttt{cluster_tolerance} bestimmt die räumliche Nachbarschaft beim Clustering. Weitere Einstellungen bleiben fix, da sie entweder durch die Versuchskonfiguration vorgegeben sind (\texttt{min_bound}/\texttt{max_bound} der CropBox), bereits konservative Robustheitsreserven bieten (\texttt{max_iterations} der \ac{RANSAC}-Suche), nur sekundären Einfluss auf die Klassentrennung haben (\texttt{min_cluster_size}, \texttt{max_cluster_size}, \texttt{max_clusters}) oder die Vergleichbarkeit der Wiederholungsmessungen beeinträchtigen würden (\texttt{gate_dist_max}, \texttt{max_missed}, \texttt{min_hits}). Dadurch bleibt der Suchraum handhabbar, ohne zentrale Qualitätstreiber zu vernachlässigen.
+Eine effektive Bodenentfernung wird dabei durch die geringe Anzahl an Falsch-Positiv-Detektionen (False Positives) in den folgenden Szenarien demonstriert, auch ohne direkte prozentuale Messung. Die geometrische Genauigkeit der Bounding Boxes wurde dabei visuell verifiziert und für die Anforderungen der Objektverfolgung als ausreichend bewertet.
 
 \subsection{Untersuchungsaufbau}
 Die Messungen wurden in drei realen Szenarien durchgeführt:
@@ -138,6 +139,7 @@ Real & 15 & 0 & 1 & 3 & 19 \\
 \end{table}
 
 Die Auswertungen für \textbf{S1} zeigen deutlich, wie sensibel die Verarbeitungskette auf Übersegmentierung reagiert. Eine Vergrößerung der \texttt{voxel\_size} von \SI{0.10}{m} auf \SI{0.20}{m} reduziert die Fehlklassifikationen von Menschen und Fahrradfahrern vollständig und nähert sich mit insgesamt 17 Detektionen dem Realwert von 19 Objekten an. Für die Bodensegmentierung verhindern Werte ab \SI{0.15}{m}, dass Fahrzeugdachpunkte als Boden eingestuft werden; bei \SI{0.20}{m} steigt die Gesamtdetektion zwar auf 20, allerdings mit einem zusätzlichen LKW-Falschpositiv. Am deutlichsten wird der Einfluss der \texttt{cluster\_tolerance}: Zu kleine Werte (\SI{0.30}{m}) führen zu einer Übersegmentierung von PKW (24 Gesamt\-detektionen), während zu große Werte (\SI{0.70}{m} und \SI{0.90}{m}) angrenzende Fahrzeuge zusammenziehen (nur 11 bzw. 10 Detektionen). Die Einstellung \SI{0.50}{m} liefert mit 19 Detektionen eine nahezu perfekte Übereinstimmung mit der Bodenwahrheit und stellt damit den besten Kompromiss zwischen Trennschärfe und Zusammenfassung dar. Insgesamt ergibt sich für dieses Szenario ein Optimum bei moderaten Einstellungen (\texttt{voxel\_size} \(\approx\) \SI{0.20}{m}, \texttt{distance\_threshold} \(=\) \SI{0.15}{m}, \texttt{cluster\_tolerance} \(=\) \SI{0.50}{m}).
+Die geometrische Genauigkeit der Bounding Boxes wurde dabei visuell verifiziert und für die Anforderungen der Objektverfolgung als ausreichend bewertet.
 
 \subsection{S2 – Kreuzung}
 
@@ -145,7 +147,6 @@ Die Parameterstudie für die Kreuzungsszene untersucht die Auswirkungen verschie
 
 \begin{table}[H]
   \centering
-  \caption{Anzahl Detektionen pro Klasse für unterschiedliche Voxelgrößen (Kreuzung).}
   \begin{tabular}{lccccc}
     \toprule
     \textbf{voxel\_size (m)} & \textbf{PKW} & \textbf{Mensch} & \textbf{Fahrradfahrer} & \textbf{LKW} & \textbf{Gesamt} \\
@@ -158,6 +159,7 @@ Die Parameterstudie für die Kreuzungsszene untersucht die Auswirkungen verschie
     Real &  9 &  3 & 1 & 1 & 14 \\
     \bottomrule
   \end{tabular}
+  \caption{Anzahl Detektionen pro Klasse für unterschiedliche Voxelgrößen (Kreuzung).}
   \label{tab:kreuzung_voxel_size}
 \end{table}
 
@@ -357,7 +359,7 @@ dass alle Verarbeitungsknoten die eingehenden Frames zuverlässig verarbeiten
 (\enquote{gaps~=~0}). Die niedrige effektive Eingangsfrequenz der Punktwolke
 ($\approx 2$--$2{,}5\,\text{Hz}$) ist daher primär auf die Datenquelle bzw.\ die
 I/O-Umgebung zurückzuführen und nicht auf eine Überlastung der implementierten
-Verarbeitungskette.
+Verarbeitungskette. Da die gemessene Latenz durchgehend unter \(100\,\text{ms}\) liegt, deutet dies darauf hin, dass der Algorithmus in einem Live-Setup ohne I/O-Limitierung höhere Raten erreichen kann.
 
 Die Tracking-IDs waren im Echtbetrieb dennoch nur eingeschränkt stabil. Aufgrund der
 geringen Eingangsfrequenz änderte sich die Clustergeometrie zwischen den einzelnen Frames
@@ -551,7 +553,7 @@ Messwerte, dass die Verarbeitungskette auch unter variierenden Umweltbedingungen
 weitergehende Funktionalitäten bietet.
 
 \section{Bewertung des Algorithmus}
-Die in Kapitel~\ref{chap:systemarchitektur} formulierten Anforderungen an den Algorithmus (Tabelle~\ref{tab:anforderungen_messkette}) lassen sich anhand der Messergebnisse weitgehend bestätigen. Im Folgenden werden die zentralen Kriterien zusammengefasst und den Beobachtungen aus den Fahrversuchen gegenübergestellt:
+Die in Kapitel~\ref{chap:systemarchitektur} formulierten Anforderungen an den Algorithmus (Tabelle~\ref{tab:anforderungen_verarbeitungskette}) lassen sich anhand der Messergebnisse weitgehend bestätigen. Im Folgenden werden die zentralen Kriterien zusammengefasst und den Beobachtungen aus den Fahrversuchen gegenübergestellt:
 \begin{itemize}
   \item \textbf{Echtzeitfähigkeit (Anforderung~6):} Die gemessenen End-to-End-Latenzen liegen mit \(20{-}40\,\text{ms}\) deutlich unter der Zielmarke von \(100\,\text{ms}\). Selbst im ungünstigsten Szenario (Stillstand) bleibt die mittlere Latenz stabil bei rund \(81\,\text{ms}\), sodass die vorgegebene Ausführungsrate von \(10\,\text{Hz}\) eingehalten werden kann.
   \item \textbf{Ressourceneffizienz und Stabilität (Anforderungen~7~\&~8):} Die CPU-Auslastung bleibt über alle Szenarien unter \(35\,\%\), der Speicherbedarf stabilisiert sich bei etwa \(200\,\text{MB}\). Damit werden die Grenzen für Standardhardware klar unterschritten und es besteht Reserve für zusätzliche Funktionen oder Debug-Ausgaben.

@@ -290,16 +290,16 @@ Der Knoten deklariert die Ein- und Ausgabetopics als Parameter und nutzt \texttt
 Leere Eingaben werden verworfen, um unnötige Rechenarbeit zu vermeiden.
 
 Die wesentlichen Laufzeitparameter werden als \ac{ROS}-Parameter deklariert und können über Launch-Dateien oder \texttt{ros2 param} angepasst werden (Default-Werte aus dem Code):
-\begin{table}[h!]
+\begin{table}[H]
 \centering
-\begin{tabular}{lcl}
+\begin{tabularx}{\textwidth}{l c X}
 \toprule
 \textbf{Parameter} & \textbf{Default} & \textbf{Bedeutung} \\ \midrule
 \texttt{input\_topic} & \texttt{/points\_voxel} & Eingangs-Punktwolke (vorsegmentiert per VoxelGrid) \\
 \texttt{output\_topic} & \texttt{/obstacle\_points} & Ausgabe ohne Bodenpunkte \\
 \texttt{distance\_threshold} & \SI{0,15}{\meter} & maximaler Punkt-zu-Ebene-Abstand für Inlier \\
 \texttt{max\_iterations} & $1000$ & maximale \ac{RANSAC}-Iterationen \\ \bottomrule
-\end{tabular}
+\end{tabularx}
 \caption{\ac{RANSAC}-Parametrisierung des \texttt{ransac\_ground\_node}.}
 \label{tab:ransac_params}
 \end{table}

@@ -11,11 +11,13 @@ Zwei Punkte \(p_i=(x_i,y_i,z_i)^\top\) und \(p_j\) gehören demselben Cluster an
 \[
  d(p_i,p_j) = \sqrt{(x_i-x_j)^2+(y_i-y_j)^2+(z_i-z_j)^2}
 \]
-die Grundlage; eine feste Verknüpfungsschwelle \(\varepsilon\) definiert die Kanten von \(G\). \ac{LiDAR}-Punktwolken besitzen aufgrund ihres winkelbasierten Abtastgitters eine von der Entfernung abhängige, anisotrope Punktdichte \parencite{himmelsbach2010fast}. Deshalb beeinflussen Vorverarbeitung (Voxelgröße) und die Wahl von \(\varepsilon\) die Fragmentierung/Verschmelzung besonders stark: Ein zu kleiner Schwellenwert lässt weit entfernte Objekte zerfallen, ein zu großer führt zum Verschmelzen benachbarter Objekte im Nahbereich. Abbildung~\ref{fig:cluster_principle} skizziert das Vorgehen und verdeutlicht, dass die Clusterung die eigentliche Objektbildung für die nachgelagerte Verfolgung bereitstellt.
+die Grundlage; eine feste Verknüpfungsschwelle \(\varepsilon\) definiert die Kanten von \(G\). \ac{LiDAR}-Punktwolken besitzen aufgrund ihres winkelbasierten Abtastgitters eine von der Entfernung abhängige, anisotrope Punktdichte \parencite{himmelsbach2010fast}. Deshalb beeinflussen Vorverarbeitung (Voxelgröße) und die Wahl von \(\varepsilon\) die Fragmentierung/Verschmelzung besonders stark: Ein zu kleiner Schwellenwert lässt weit entfernte Objekte zerfallen, ein zu großer führt zum Verschmelzen benachbarter Objekte im Nahbereich.
 
 Für jede identifizierte Komponente werden im Anschluss Lage (Zentrum) und Ausdehnung über Begrenzungsboxen bestimmt. Achsenparallele Boxen (AABB) greifen auf Min-/Max-Koordinaten zurück, orientierte Boxen (OBB) nutzen Trägheitstensor oder Hauptachsentransformation (PCA), um die Orientierung der Punktverteilung widerzuspiegeln \parencite{gottschalk1996obb}. Beide Varianten liefern damit ein abstrahiertes, metrisches Objektmodell, das als \emph{Detektion} publiziert wird und die Initialisierung der Tracking-Stufe ermöglicht.
 
-In dieser Arbeit wird die euklidische Clusterung der \emph{Point Cloud Library (\ac{PCL})} eingesetzt (\texttt{pcl::EuclideanClusterExtraction}) in Verbindung mit einem k-d-Baum (\texttt{pcl::search::KdTree}) \parencite{pcl_docs_2025}. Der Algorithmus folgt dem in der Literatur etablierten Ablauf: Aufbau eines Suchbaums, breadth-first/ depth-first Traversierung und komponentenweise Markierung der Punkte \parencite{Douillard2011,rusu2011pcl}. Gegenüber dichtebasierten Verfahren wie \ac{DBSCAN} sind die Parameterzahl und die Rechenzeit deterministischer, was die Integration in eine Echtzeit-Pipeline erleichtert \parencite{Ester1996DBSCAN}. Zusätzlich ist das Verfahren trainingsfrei und benötigt nur wenige, gut interpretierbare Parameter:
+In dieser Arbeit wird die euklidische Clusterung der \emph{Point Cloud Library (\ac{PCL})} eingesetzt (\texttt{pcl::EuclideanClusterExtraction}). Diese nutzt zur Beschleunigung einen k-d-Baum (\texttt{pcl::search::KdTree}) \parencite{pcl_docs_2025}.
+
+Der Algorithmus folgt dem in der Literatur etablierten Ablauf: Aufbau eines Suchbaums, breadth-first/ depth-first Traversierung und komponentenweise Markierung der Punkte \parencite{Douillard2011,rusu2011pcl}. Gegenüber dichtebasierten Verfahren wie \ac{DBSCAN} sind die Parameterzahl und die Rechenzeit deterministischer, was die Integration in eine Echtzeit-Pipeline erleichtert \parencite{Ester1996DBSCAN}. Zusätzlich ist das Verfahren trainingsfrei und benötigt nur wenige, gut interpretierbare Parameter:
 
 \begin{itemize}
   \item \textbf{\texttt{cluster\_tolerance}} \(\varepsilon\) [m]: maximaler euklidischer Punktabstand innerhalb eines Clusters (räumliche Verknüpfung).
@@ -70,9 +72,10 @@ Die Boxermittlung folgt direkt auf die Punktzusammenfassung und nutzt ausschlie�
 \label{sec:aabb}
 Die AABB wird durch die minimalen und maximalen Koordinaten je Achse bestimmt:
 \(x_{\min},x_{\max},y_{\min},y_{\max},z_{\min},z_{\max}\). Zentrum und Kantenlängen ergeben sich zu
-\[\mathbf{c}=\tfrac{1}{2}\bigl((x_{\min},y_{\min},z_{\min})^\top+(x_{\max},y_{\max},z_{\max})^\top\bigr),\quad
- L=x_{\max}-x_{\min},\; W=y_{\max}-y_{\min},\; H=z_{\max}-z_{\min}.
-\]
+\begin{align*}
+\mathbf{c} &= \tfrac{1}{2}\bigl((x_{\min},y_{\min},z_{\min})^\top+(x_{\max},y_{\max},z_{\max})^\top\bigr) \\
+L &= x_{\max}-x_{\min},\quad W=y_{\max}-y_{\min},\quad H=z_{\max}-z_{\min}
+\end{align*}
 
 In der Implementierung besteht der Aufwand nur aus sechs Min-/Max-Suchen und drei Differenzen, skaliert damit linear mit der
 Punktanzahl und bleibt deterministisch reproduzierbar – selbst bei grobem Downsampling. Ausreißer lassen sich vorab durch
@@ -84,7 +87,14 @@ ist dieser Effekt jedoch beherrschbar, solange nachgelagerte Filter (z.\,B. Grö
 
 \subsection{OBB}
 \label{sec:obb}
-Die OBB richtet die Box entlang der Hauptachsen des Punktverteilungstensors aus. Praktisch wird dies in \ac{PCL} über die Trägheits-/PCA-Schätzung realisiert (z.\,B. \texttt{pcl::MomentOfInertiaEstimation}) \parencite{pcl_docs_2025}. Vorteile: kompaktere Umhüllung bei deutlich orientierten, elongierten Objekten (Fahrzeuge, Leitplanken); die abgeleitete Yaw kann nachgelagert genutzt werden. Nachteile: höhere Rechenkosten und potenzielle Instabilitäten bei kleinen, teilverdeckten oder nahezu isotropen Clustern (Rauscheinfluss, Sprünge der Hauptachsen). Eine alternative, zweidimensionale Näherung ist die Bestimmung eines Minimalrechtecks in der Draufsicht (\ac{BEV}), welches besonders stabile Yaw-Werte für straßennahe Objekte liefert; diese Option ist mit geringem Mehraufwand realisierbar und lässt sich mit AABB kombinieren (AABB für \(L,W,H\), Yaw aus \ac{BEV}). Abbildung~\ref{fig:bev_minarea} reserviert Platz für eine entsprechende Darstellung.
+Die OBB richtet die Box entlang der Hauptachsen des Punktverteilungstensors aus.
+Praktisch wird dies in \ac{PCL} über die Trägheits-/PCA-Schätzung realisiert \parencite{pcl_docs_2025}.
+
+Vorteile sind kompaktere Umhüllung bei deutlich orientierten, elongierten Objekten (Fahrzeuge, Leitplanken); die abgeleitete Yaw kann nachgelagert genutzt werden. 
+
+Aber Nachteile sind höhere Rechenkosten und potenzielle Instabilitäten bei kleinen, teilverdeckten oder nahezu isotropen Clustern (Rauscheinfluss, Sprünge der Hauptachsen).
+
+Eine alternative, zweidimensionale Näherung ist die Bestimmung eines Minimalrechtecks in der Draufsicht (\ac{BEV}), welches besonders stabile Yaw-Werte für straßennahe Objekte liefert; diese Option ist mit geringem Mehraufwand realisierbar und lässt sich mit AABB kombinieren (AABB für \(L,W,H\), Yaw aus \ac{BEV}).
 
 \subsection{Vergleich AABB vs. OBB und Wahl in dieser Arbeit}
 \textbf{AABB} arbeiten sehr schnell, stabil und deterministisch, bilden jedoch keine Orientierung ab und neigen bei stark gedrehten Objekten zu einer größeren Grundfläche. \textbf{OBB} liefern dagegen eine orientierte und bei elongierten Strukturen meist kompaktere Hülle, erfordern aber mehr Rechenaufwand, reagieren empfindlicher auf Ausdünnung oder Teilsicht und können dadurch sprunghaft wechseln.
